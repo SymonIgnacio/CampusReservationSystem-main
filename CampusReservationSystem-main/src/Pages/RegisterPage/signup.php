@@ -15,6 +15,7 @@ if (!$data) {
 $firstName = $data["firstName"];
 $middleName = $data["middleName"];
 $lastName = $data["lastName"];
+$department = $data["department"];
 $email = $data["email"];
 $username = $data["username"];
 $password = $data["password"];
@@ -38,11 +39,11 @@ if ($conn->connect_error) {
 }
 
 // Use the correct column names that match your database
-$sql = "INSERT INTO users (firstname, middlename, lastname, email, username, password, role)
-        VALUES (?, ?, ?, ?, ?, ?, ?)";
+$sql = "INSERT INTO users (firstname, middlename, lastname, department, email, username, password, role)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
 $stmt = $conn->prepare($sql);
-$stmt->bind_param("sssssss", $firstName, $middleName, $lastName, $email, $username, $hashedPassword, $role);
+$stmt->bind_param("ssssssss", $firstName, $middleName, $lastName, $department, $email, $username, $hashedPassword, $role);
 
 if ($stmt->execute()) {
   echo "Registration successful!";

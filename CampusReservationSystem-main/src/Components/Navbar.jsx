@@ -72,30 +72,44 @@ const Navbar = ({ isAdminPage = false }) => {
                         <li>
                             <a href="#" onClick={handleNavigation('/admin/dashboard')}>
                                 <i className="bx bxs-dashboard"></i>
-                                <span className="link-text">ADMIN DASHBOARD</span>
+                                <span className="link-text">DASHBOARD</span>
                             </a>
-                            <span className="tooltip">Admin Dashboard</span>
+                            <span className="tooltip">Dashboard</span>
                         </li>
                         <li>
-                            <a href="#" onClick={handleNavigation('/admin/manage-reservations')}>
-                                <i className="bx bx-list-check"></i>
-                                <span className="link-text">MANAGE RESERVATIONS</span>
+                            <a href="#" onClick={handleNavigation('/admin/events')}>
+                                <i className="bx bx-calendar"></i>
+                                <span className="link-text">EVENTS</span>
                             </a>
-                            <span className="tooltip">Manage Reservations</span>
+                            <span className="tooltip">Events</span>
+                        </li>
+                        <li>
+                            <a href="#" onClick={handleNavigation('/admin/requests')}>
+                                <i className="bx bx-edit"></i>
+                                <span className="link-text">REQUESTS</span>
+                            </a>
+                            <span className="tooltip">Requests</span>
+                        </li>
+                        <li>
+                            <a href="#" onClick={handleNavigation('/admin/create-event')}>
+                                <i className="bx bx-plus-square"></i>
+                                <span className="link-text">CREATE EVENT</span>
+                            </a>
+                            <span className="tooltip">Create Event</span>
                         </li>
                         <li>
                             <a href="#" onClick={handleNavigation('/admin/users')}>
                                 <i className="bx bx-user"></i>
-                                <span className="link-text">MANAGE USERS</span>
+                                <span className="link-text">USERS</span>
                             </a>
-                            <span className="tooltip">Manage Users</span>
+                            <span className="tooltip">Users</span>
                         </li>
                         <li>
                             <a href="#" onClick={handleNavigation('/admin/settings')}>
                                 <i className="bx bx-cog"></i>
-                                <span className="link-text">ADMIN SETTINGS</span>
+                                <span className="link-text">SETTINGS</span>
                             </a>
-                            <span className="tooltip">Admin Settings</span>
+                            <span className="tooltip">Settings</span>
                         </li>
                     </>
                 ) : (

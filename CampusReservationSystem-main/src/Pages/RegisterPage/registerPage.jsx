@@ -7,6 +7,7 @@ function RegisterPage() {
     firstName: "",
     middleName: "",
     lastName: "",
+    department: "",
     email: "",
     username: "",
     password: "",
@@ -56,6 +57,9 @@ function RegisterPage() {
 
           <label htmlFor="lastName">Last Name:</label>
           <input type="text" id="lastName" name="lastName" value={formData.lastName} onChange={handleChange} required />
+
+          <label htmlFor="department">Department:</label>
+          <input type="text" id="department" name="department" value={formData.department} onChange={handleChange} required />
 
           <label htmlFor="email">Email:</label>
           <input type="email" id="email" name="email" value={formData.email} onChange={handleChange} required />

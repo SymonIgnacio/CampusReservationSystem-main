@@ -74,6 +74,7 @@ function LoginPage() {
             type="checkbox"
             id="show-password"
             onChange={togglePasswordVisibility}
+            checked={showPassword}
           />
           <label htmlFor="show-password">Show password</label>
         </div>
@@ -83,7 +84,7 @@ function LoginPage() {
         </button>
       </form>
 
-      <p>
+      <p className="register-link">
         Don't have an account? <Link to="/register">Register here</Link>
       </p>
     </div>

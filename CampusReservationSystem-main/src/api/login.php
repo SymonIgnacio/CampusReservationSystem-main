@@ -1,8 +1,9 @@
 <?php
 // Enable CORS
-header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Origin: http://localhost:3000");
 header("Access-Control-Allow-Headers: Content-Type, Authorization");
 header("Access-Control-Allow-Methods: POST, OPTIONS");
+header("Access-Control-Allow-Credentials: true");
 header("Content-Type: application/json");
 
 // Handle preflight OPTIONS request
@@ -70,8 +71,9 @@ if ($result->num_rows === 1) {
         // Remove password from user data before sending to client
         unset($user['password']);
         
-        // Start session and set session variables
-        session_start();
+        // Include session configuration
+        require_once 'session_config.php';
+        // Set session variables
         $_SESSION['user_id'] = $user['user_id']; // Adjust field name if needed
         $_SESSION['username'] = $user['username'];
         $_SESSION['role'] = $user['role'];

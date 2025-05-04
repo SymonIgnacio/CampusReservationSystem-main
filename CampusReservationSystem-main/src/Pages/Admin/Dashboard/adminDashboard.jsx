@@ -1,9 +1,9 @@
 import React, { useContext, useState, useEffect } from 'react';
-import { EventContext } from '../../context/EventContext';
-import { AuthContext } from '../../context/AuthContext';
-import './dashboard.css';
+import { EventContext } from '../../../context/EventContext';
+import { AuthContext } from '../../../context/AuthContext';
+import './adminDashboard.css';
 
-function Dashboard() {
+function AdminDashboard() {
   const { events, stats, getUpcomingEvents, loading, error, refreshData } = useContext(EventContext);
   const { user } = useContext(AuthContext);
   const [filter, setFilter] = useState('all'); // Filter for events: 'all', 'pending', 'approved', 'declined'
@@ -52,7 +52,7 @@ function Dashboard() {
       {/* Main Content */}
       <main className="main-content">
         <div className="dashboard-header">
-          <h1>DASHBOARD</h1>
+          <h1>ADMIN DASHBOARD</h1>
           {user && <p>Welcome, {getFieldValue(user, ['name', 'firstname', 'username'])}!</p>}
         </div>
 
@@ -122,6 +122,7 @@ function Dashboard() {
                     <th>LOCATION</th>
                     <th>STATUS</th>
                     <th>RESERVED BY</th>
+                    <th>ACTIONS</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -138,6 +139,10 @@ function Dashboard() {
                         </span>
                       </td>
                       <td>{getFieldValue(event, ['organizer', 'reserved_by', 'user_id'])}</td>
+                      <td className="action-buttons">
+                        <button className="approve-btn">Approve</button>
+                        <button className="decline-btn">Decline</button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -152,4 +157,4 @@ function Dashboard() {
   );
 }
 
-export default Dashboard;
+export default AdminDashboard;

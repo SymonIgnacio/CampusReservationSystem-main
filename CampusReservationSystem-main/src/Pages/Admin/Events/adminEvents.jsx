@@ -1,0 +1,364 @@
+import React, { useState } from 'react';
+import 'boxicons/css/boxicons.min.css';
+import './adminEvents.css';
+
+function AdminEvents({ isCollapsed }) {
+  const [date] = useState(new Date());
+  const [month, setMonth] = useState(date.getMonth());
+  const [year, setYear] = useState(date.getFullYear());
+  const [searchTerm, setSearchTerm] = useState('');
+  const [goToDate, setGoToDate] = useState('');
+  const [showGoToModal, setShowGoToModal] = useState(false);
+  const [goToMonth, setGoToMonth] = useState('');
+  const [goToDay, setGoToDay] = useState('');
+  const [goToYear, setGoToYear] = useState('');
+
+  const months = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ];
+
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const shortDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+  const renderCalendar = () => {
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const daysInPrevMonth = new Date(year, month, 0).getDate();
+
+    let dates = [];
+    const totalCells = 7 * 6; // 7 days x 6 weeks
+
+    // Previous month days
+    for (let i = 0; i < firstDay; i++) {
+      dates.push({
+        day: daysInPrevMonth - firstDay + i + 1,
+        currentMonth: false,
+        isToday: false
+      });
+    }
+
+    // Current month days
+    for (let i = 1; i <= daysInMonth; i++) {
+      const isToday = 
+        i === date.getDate() && 
+        month === new Date().getMonth() && 
+        year === new Date().getFullYear();
+      
+      dates.push({
+        day: i,
+        currentMonth: true,
+        isToday: isToday
+      });
+    }
+
+    // Next month days (to fill remaining cells)
+    const remainingCells = totalCells - dates.length;
+    for (let i = 1; i <= remainingCells; i++) {
+      dates.push({
+        day: i,
+        currentMonth: false,
+        isToday: false
+      });
+    }
+
+    // Split into weeks (6 weeks)
+    let rows = [];
+    for (let i = 0; i < totalCells; i += 7) {
+      rows.push(dates.slice(i, i + 7));
+    }
+
+    return rows.map((week, weekIndex) => (
+      <tr key={`week-${weekIndex}`}>
+        {week.map((dayObj, dayIndex) => (
+          <td 
+            key={`day-${weekIndex}-${dayIndex}`}
+            className={`${!dayObj.currentMonth ? 'inactive' : ''} ${dayObj.isToday ? 'today' : ''}`}
+          >
+            {dayObj.day}
+          </td>
+        ))}
+      </tr>
+    ));
+  };
+
+  const handleNavClick = (direction) => {
+    let newMonth = month;
+    let newYear = year;
+
+    if (direction === "prev") {
+      if (month === 0) {
+        newYear--;
+        newMonth = 11;
+      } else {
+        newMonth--;
+      }
+    } else {
+      if (month === 11) {
+        newYear++;
+        newMonth = 0;
+      } else {
+        newMonth++;
+      }
+    }
+
+    setMonth(newMonth);
+    setYear(newYear);
+  };
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    const filtered = events.filter(event => 
+      event.title.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    setFilteredEvents(filtered);
+  };
+  
+  const handleModalGoTo = (e) => {
+    e.preventDefault();
+    if (!goToMonth || !goToYear) return;
+    
+    const month = parseInt(goToMonth) - 1;
+    const year = parseInt(goToYear);
+    
+    if (!isNaN(month) && !isNaN(year) && month >= 0 && month <= 11) {
+      setMonth(month);
+      setYear(year);
+      setShowGoToModal(false);
+      setGoToMonth('');
+      setGoToDay('');
+      setGoToYear('');
+    }
+  };
+
+  const handleTextGoTo = (e) => {
+    e.preventDefault();
+    if (!goToDate) return;
+    
+    const dateParts = goToDate.split('-');
+    if (dateParts.length === 2) {
+      const month = parseInt(dateParts[0]) - 1;
+      const year = parseInt(dateParts[1]);
+      
+      if (!isNaN(month) && !isNaN(year) && month >= 0 && month <= 11) {
+        setMonth(month);
+        setYear(year);
+        setGoToDate('');
+      }
+    } else if (dateParts.length === 3) {
+      const month = parseInt(dateParts[0]) - 1;
+      const year = parseInt(dateParts[2]);
+      
+      if (!isNaN(month) && !isNaN(year) && month >= 0 && month <= 11) {
+        setMonth(month);
+        setYear(year);
+        setGoToDate('');
+      }
+    }
+  };
+
+  const [events, setEvents] = useState([
+    { id: 1, title: 'Meeting', date: new Date(), type: 'upcoming', status: 'approved' },
+    { id: 2, title: 'Project Deadline', date: new Date(2023, 11, 15), type: 'upcoming', status: 'pending' },
+    { id: 3, title: 'Team Lunch', date: new Date(2025, 10, 20), type: 'upcoming', status: 'pending' },
+    { id: 4, title: 'Conference', date: new Date(2023, 9, 5), type: 'finished', status: 'approved' },
+  ]);
+  
+  const [filteredEvents, setFilteredEvents] = useState(events);
+  
+  const currentMonthEvents = filteredEvents.filter(event => 
+    event.date.getMonth() === month && 
+    event.date.getFullYear() === year
+  );
+
+  const upcomingEvents = currentMonthEvents.filter(event => event.type === 'upcoming');
+  const finishedEvents = currentMonthEvents.filter(event => event.type === 'finished');
+
+  // Admin-specific functions
+  const handleApprove = (id) => {
+    setEvents(events.map(event => 
+      event.id === id ? { ...event, status: 'approved' } : event
+    ));
+    setFilteredEvents(filteredEvents.map(event => 
+      event.id === id ? { ...event, status: 'approved' } : event
+    ));
+  };
+
+  const handleDecline = (id) => {
+    setEvents(events.map(event => 
+      event.id === id ? { ...event, status: 'declined' } : event
+    ));
+    setFilteredEvents(filteredEvents.map(event => 
+      event.id === id ? { ...event, status: 'declined' } : event
+    ));
+  };
+
+  return (
+    <div className={`dashboard-container ${isCollapsed ? 'collapsed' : ''}`}>
+      <div className="calendar-container">
+        <h1>EVENTS CALENDAR</h1>
+        
+        <div className="calendar-nav">
+          <button onClick={() => handleNavClick("prev")} className="nav-button">
+            <i className='bx bx-chevron-left'></i>
+          </button>
+          <h2>{months[month].toUpperCase()} {year}</h2>
+          <button onClick={() => handleNavClick("next")} className="nav-button">
+            <i className='bx bx-chevron-right'></i>
+          </button>
+        </div>
+        <div className='search-container'>
+          <button className='btn-goto' onClick={() => setShowGoToModal(true)}>GO TO</button>
+          <form onSubmit={handleSearch} className="btn-search-container">
+            <input 
+              type="text" 
+              placeholder="Search events..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            <button type="submit" className='btn-search'>
+              <i className="bx bx-search"></i>
+            </button>
+          </form>
+        </div>
+
+        <table className="calendar-table">
+          <thead>
+            <tr>
+              {shortDays.map(day => (
+                <th key={day}>{day.toUpperCase()}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {renderCalendar()}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="event-planner">
+        <div className="legend">
+          <h4 className='dashboard-label'>LEGEND</h4>
+          <div className="border">
+            <button className="upcoming"> UPCOMING </button>
+            <button className="finished"> FINISHED </button>
+            <button className="pending"> PENDING </button>
+            <button className="approved"> APPROVED </button>
+            <button className="declined"> DECLINED </button>
+          </div>
+        </div>
+        <div className="events">
+          <h4 className='dashboard-label'>UPCOMING EVENTS FOR <span className='dashboard-label'>{months[month].toUpperCase()} {year}</span></h4>
+          <div className="border">
+            {upcomingEvents.length > 0 ? (
+              <ul className="event-list">
+                {upcomingEvents.map(event => (
+                  <li key={event.id} className={`event-item ${event.status}`}>
+                    <div className="event-header">
+                      <span className="event-date">
+                        {months[event.date.getMonth()].slice(0, 3)} {' '} {event.date.getDate()} {' '}
+                      </span>
+                      <span className={`status-badge ${event.status}`}>
+                        {event.status.toUpperCase()}
+                      </span>
+                    </div>
+                    <span className="event-title">{event.title}</span>
+                    {event.status === 'pending' && (
+                      <div className="event-actions">
+                        <button onClick={() => handleApprove(event.id)} className="approve-btn">Approve</button>
+                        <button onClick={() => handleDecline(event.id)} className="decline-btn">Decline</button>
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="no-events">No upcoming events this month</p>
+            )}
+          </div>
+          <h4 className='dashboard-label'>FINISHED EVENTS</h4>
+          <div className="border">
+            {finishedEvents.length > 0 ? (
+              <ul className="event-list">
+                {finishedEvents.map(event => (
+                  <li key={event.id} className={`event-item ${event.status}`}>
+                    <div className="event-header">
+                      <span className="event-date">
+                        {event.date.getDate()} {months[event.date.getMonth()].slice(0, 3)}
+                      </span>
+                      <span className={`status-badge ${event.status}`}>
+                        {event.status.toUpperCase()}
+                      </span>
+                    </div>
+                    <span className="event-title">{event.title}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="no-events">No finished events this month</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Go To Modal */}
+      {showGoToModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h3>GO TO</h3>
+            <div className="modal-input-group">
+              <label>MONTH</label>
+              <input 
+                type="number" 
+                min="1" 
+                max="12" 
+                value={goToMonth}
+                onChange={(e) => setGoToMonth(e.target.value)}
+                placeholder="MM"
+              />
+            </div>
+            <div className="modal-input-group">
+              <label>DAY</label>
+              <input 
+                type="number" 
+                min="1" 
+                max="31" 
+                value={goToDay}
+                onChange={(e) => setGoToDay(e.target.value)}
+                placeholder="DD"
+              />
+            </div>
+            <div className="modal-input-group">
+              <label>YEAR</label>
+              <input 
+                type="number" 
+                min="2000" 
+                max="2100" 
+                value={goToYear}
+                onChange={(e) => setGoToYear(e.target.value)}
+                placeholder="YYYY"
+              />
+            </div>
+            <div className="modal-buttons">
+              <button 
+                className="modal-ok" 
+                onClick={handleModalGoTo}
+                disabled={!goToMonth || !goToYear}
+              >
+                OK
+              </button>
+              <button 
+                className="modal-cancel" 
+                onClick={() => setShowGoToModal(false)}
+              >
+                CANCEL
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default AdminEvents;

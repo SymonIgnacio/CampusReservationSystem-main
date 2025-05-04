@@ -6,6 +6,8 @@ export const AuthContext = createContext();
 // Base API URL - adjust this to match your server configuration
 const API_BASE_URL = 'http://localhost/CampusReservationSystem-main/CampusReservationSystem-main/src/api';
 
+// API URL is defined above
+
 // AuthContext Provider Component
 const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
@@ -39,7 +41,10 @@ const AuthProvider = ({ children }) => {
             console.log('Attempting login with:', credentials);
             console.log('API URL:', `${API_BASE_URL}/login.php`);
             
-            const response = await fetch(`${API_BASE_URL}/login.php`, {
+            const loginEndpoint = '/login.php';
+            console.log('Using endpoint:', `${API_BASE_URL}${loginEndpoint}`);
+            
+            const response = await fetch(`${API_BASE_URL}${loginEndpoint}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

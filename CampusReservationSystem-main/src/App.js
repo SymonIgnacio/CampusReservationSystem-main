@@ -5,17 +5,18 @@ import EventProvider from './context/EventContext';
 import './App.css';
 import LoginPage from './Pages/LoginPage/loginPage';
 import RegisterPage from './Pages/RegisterPage/registerPage';
-import Dashboard from './Pages/Dashboard/dashboard';
+import ClientDashboard from './Pages/Dashboard/clientDashboard';
+import AdminDashboard from './Pages/Admin/Dashboard/adminDashboard';
 import RequestEvent from './Pages/Request Event/requestEvent';
 import Settings from './Pages/Settings/settings';
 import Navbar from './Components/Navbar';
 
-// Import admin pages - you'll need to create these
-// For now, we'll use the Dashboard component as a placeholder
-// Replace these with your actual admin components when you create them
-const AdminDashboard = Dashboard;
-const ManageReservations = () => <div>Manage Reservations Page</div>;
-const ManageUsers = () => <div>Manage Users Page</div>;
+// Import admin pages
+import AdminEvents from './Pages/Admin/Events/adminEvents';
+import AdminCreateEvent from './Pages/Admin/CreateEvent/adminCreateEvent';
+import AdminUsers from './Pages/Admin/Users/adminUsers';
+// For now, we'll use placeholder components for the rest
+const AdminRequests = () => <div>Requests Management Page</div>;
 const AdminSettings = Settings;
 
 // Protected route component
@@ -35,14 +36,13 @@ const ProtectedRoute = ({ element, requiredRole }) => {
 
 function AppContent() {
   const location = useLocation();
-  const { user } = useContext(AuthContext);
   
   // Check if current route is an admin route
   const isAdminRoute = location.pathname.startsWith('/admin');
   
   // Show navbar on these routes
   const clientNavbarRoutes = ['/dashboard', '/requestEvent', '/settings'];
-  const adminNavbarRoutes = ['/admin/dashboard', '/admin/manage-reservations', '/admin/users', '/admin/settings'];
+  const adminNavbarRoutes = ['/admin/dashboard', '/admin/events', '/admin/requests', '/admin/create-event', '/admin/users', '/admin/settings'];
   
   // Determine if navbar should be shown
   const showNavbar = clientNavbarRoutes.includes(location.pathname) || adminNavbarRoutes.includes(location.pathname);
@@ -58,7 +58,7 @@ function AppContent() {
         
         {/* Client routes */}
         <Route path="/dashboard" element={
-          <ProtectedRoute element={<Dashboard />} />
+          <ProtectedRoute element={<ClientDashboard />} />
         } />
         <Route path="/requestEvent" element={
           <ProtectedRoute element={<RequestEvent />} />
@@ -71,11 +71,17 @@ function AppContent() {
         <Route path="/admin/dashboard" element={
           <ProtectedRoute element={<AdminDashboard />} requiredRole="admin" />
         } />
-        <Route path="/admin/manage-reservations" element={
-          <ProtectedRoute element={<ManageReservations />} requiredRole="admin" />
+        <Route path="/admin/events" element={
+          <ProtectedRoute element={<AdminEvents />} requiredRole="admin" />
+        } />
+        <Route path="/admin/requests" element={
+          <ProtectedRoute element={<AdminRequests />} requiredRole="admin" />
+        } />
+        <Route path="/admin/create-event" element={
+          <ProtectedRoute element={<AdminCreateEvent />} requiredRole="admin" />
         } />
         <Route path="/admin/users" element={
-          <ProtectedRoute element={<ManageUsers />} requiredRole="admin" />
+          <ProtectedRoute element={<AdminUsers />} requiredRole="admin" />
         } />
         <Route path="/admin/settings" element={
           <ProtectedRoute element={<AdminSettings />} requiredRole="admin" />
