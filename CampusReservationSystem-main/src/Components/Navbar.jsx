@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import './Navbar.css';
 
-const Navbar = () => {
+const Navbar = ({ isAdminPage = false }) => {
     const [isCollapsed, setIsCollapsed] = useState(false);
     const { user, logout } = useContext(AuthContext);
     const navigate = useNavigate();
@@ -33,6 +33,12 @@ const Navbar = () => {
         return user.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : 'User';
     };
 
+    // Handle navigation
+    const handleNavigation = (path) => (e) => {
+        e.preventDefault();
+        navigate(path);
+    };
+
     // Handle logout
     const handleLogout = async (e) => {
         e.preventDefault();
@@ -60,29 +66,67 @@ const Navbar = () => {
             </div>
 
             <ul className="nav-list">
+                {isAdminPage ? (
+                    // Admin Navigation Items
+                    <>
+                        <li>
+                            <a href="#" onClick={handleNavigation('/admin/dashboard')}>
+                                <i className="bx bxs-dashboard"></i>
+                                <span className="link-text">ADMIN DASHBOARD</span>
+                            </a>
+                            <span className="tooltip">Admin Dashboard</span>
+                        </li>
+                        <li>
+                            <a href="#" onClick={handleNavigation('/admin/manage-reservations')}>
+                                <i className="bx bx-list-check"></i>
+                                <span className="link-text">MANAGE RESERVATIONS</span>
+                            </a>
+                            <span className="tooltip">Manage Reservations</span>
+                        </li>
+                        <li>
+                            <a href="#" onClick={handleNavigation('/admin/users')}>
+                                <i className="bx bx-user"></i>
+                                <span className="link-text">MANAGE USERS</span>
+                            </a>
+                            <span className="tooltip">Manage Users</span>
+                        </li>
+                        <li>
+                            <a href="#" onClick={handleNavigation('/admin/settings')}>
+                                <i className="bx bx-cog"></i>
+                                <span className="link-text">ADMIN SETTINGS</span>
+                            </a>
+                            <span className="tooltip">Admin Settings</span>
+                        </li>
+                    </>
+                ) : (
+                    // Regular User Navigation Items
+                    <>
+                        <li>
+                            <a href="#" onClick={handleNavigation('/dashboard')}>
+                                <i className="bx bxs-grid-alt"></i>
+                                <span className="link-text">DASHBOARD</span>
+                            </a>
+                            <span className="tooltip">Dashboard</span>
+                        </li>
+                        <li>
+                            <a href="#" onClick={handleNavigation('/requestEvent')}>
+                                <i className="bx bx-calendar-event"></i>
+                                <span className="link-text">REQUEST EVENT</span>
+                            </a>
+                            <span className="tooltip">Request Event</span>
+                        </li>
+                        <li>
+                            <a href="#" onClick={handleNavigation('/settings')}>
+                                <i className="bx bx-cog"></i>
+                                <span className="link-text">SETTINGS</span>
+                            </a>
+                            <span className="tooltip">Settings</span>
+                        </li>
+                    </>
+                )}
+                
                 <li>
-                    <a href="dashboard">
-                        <i className="bx bxs-grid-alt"></i>
-                        <span className="link-text">DASHBOARD</span>
-                    </a>
-                    <span className="tooltip">Dashboard</span>
-                </li>
-                <li>
-                    <a href="requestEvent">
-                        <i className="bx bx-calendar-event"></i>
-                        <span className="link-text">REQUEST EVENT</span>
-                    </a>
-                    <span className="tooltip">Request Event</span>
-                </li>
-                <li>
-                    <a href="settings">
-                        <i className="bx bx-cog"></i>
-                        <span className="link-text">SETTINGS</span>
-                    </a>
-                    <span className="tooltip">Settings</span>
-                </li>
-                <li>
-                    <a href="/" onClick={handleLogout}>
+                    <a href="#" onClick={handleLogout}>
                         <i className="bx bx-log-out"></i>
                         <span className="link-text">LOGOUT</span>
                     </a>

@@ -23,7 +23,12 @@ function LoginPage() {
       const result = await login({ username, password });
       
       if (result.success) {
-        navigate("/dashboard");
+        // Check user role and redirect accordingly
+        if (result.user && result.user.role === "admin") {
+          navigate("/admin/dashboard");
+        } else {
+          navigate("/dashboard");
+        }
       } else {
         setLoginError(result.message || "Login failed. Please check your credentials.");
       }

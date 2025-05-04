@@ -65,9 +65,8 @@ if ($result->num_rows === 1) {
     // Log the user data for debugging (remove in production)
     error_log("User found: " . json_encode($user));
     
-    // Check if your database stores passwords as plain text or hashed
-    // For plain text (not recommended for production):
-    if ($user['password'] === $data['password']) {
+    // Check if password matches the hashed password in the database
+    if (password_verify($data['password'], $user['password'])) {
         // Remove password from user data before sending to client
         unset($user['password']);
         

@@ -70,9 +70,9 @@ function RegisterPage() {
 
           <label htmlFor="confirmPassword">Confirm Password:</label>
           <input type="password" id="confirmPassword" name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} required />
+          
+          <button type="submit" className="signup-button">SIGN UP</button>
         </div>
-        
-        <div><button type="submit" className="signup-button">SIGN UP</button></div>
         
       </form>
 

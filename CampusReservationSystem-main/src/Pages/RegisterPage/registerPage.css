@@ -64,7 +64,8 @@
     border-radius: 4px;
     font-size: 14px;
     cursor: pointer;
-    margin-top: -12px;
+    margin-top: 15px;
+    align-self: center;
   }
   
   .signup-button:hover {

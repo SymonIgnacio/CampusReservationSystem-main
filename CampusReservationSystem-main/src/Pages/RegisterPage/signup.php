@@ -11,7 +11,6 @@ if (!$data) {
     echo "❌ No JSON received. Raw input: " . $rawInput;
     exit;
 }
-$data = json_decode(file_get_contents("php://input"), true);
 
 $firstName = $data["firstName"];
 $middleName = $data["middleName"];
@@ -22,6 +21,9 @@ $password = $data["password"];
 
 // Hash password before storing
 $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+
+// Set default role for new users
+$role = "student";
 
 // Connect to DB
 $host = "localhost";
@@ -35,11 +37,12 @@ if ($conn->connect_error) {
   die("Connection failed: " . $conn->connect_error);
 }
 
-$sql = "INSERT INTO users (first_name, middle_name, last_name, email, username, password)
-        VALUES (?, ?, ?, ?, ?, ?)";
+// Use the correct column names that match your database
+$sql = "INSERT INTO users (firstname, middlename, lastname, email, username, password, role)
+        VALUES (?, ?, ?, ?, ?, ?, ?)";
 
 $stmt = $conn->prepare($sql);
-$stmt->bind_param("ssssss", $firstName, $middleName, $lastName, $email, $username, $hashedPassword);
+$stmt->bind_param("sssssss", $firstName, $middleName, $lastName, $email, $username, $hashedPassword, $role);
 
 if ($stmt->execute()) {
   echo "Registration successful!";
