@@ -24,7 +24,13 @@ const EventProvider = ({ children }) => {
         setError(null);
         try {
             console.log('Fetching events from:', `${API_BASE_URL}/events.php`);
-            const response = await fetch(`${API_BASE_URL}/events.php`);
+            const response = await fetch(`${API_BASE_URL}/events.php`, {
+                // Add cache busting to prevent browser caching
+                headers: {
+                    'Cache-Control': 'no-cache',
+                    'Pragma': 'no-cache'
+                }
+            });
             
             if (!response.ok) {
                 throw new Error(`HTTP error! Status: ${response.status}`);
@@ -38,9 +44,36 @@ const EventProvider = ({ children }) => {
                 
                 if (data.success) {
                     console.log('Events loaded:', data.events);
-                    console.log('Debug info:', data.debug_info);
-                    setEvents(data.events || []);
-                    calculateStats(data.events || []);
+                    
+                    // Process events to ensure all required fields exist
+                    const processedEvents = data.events.map(event => {
+                        // Ensure status field exists
+                        if (!event.status) {
+                            event.status = 'approved'; // Default status
+                        }
+                        
+                        // Ensure date field exists
+                        if (!event.date && event.date_from) {
+                            event.date = event.date_from;
+                        }
+                        
+                        // Ensure name/title field exists
+                        if (!event.name && event.activity) {
+                            event.name = event.activity;
+                            event.title = event.activity;
+                        }
+                        
+                        // Ensure place/location field exists
+                        if (!event.place && event.venue) {
+                            event.place = event.venue;
+                            event.location = event.venue;
+                        }
+                        
+                        return event;
+                    });
+                    
+                    setEvents(processedEvents || []);
+                    calculateStats(processedEvents || []);
                 } else {
                     throw new Error(data.message || 'Failed to fetch events');
                 }
@@ -85,6 +118,14 @@ const EventProvider = ({ children }) => {
     // Load data on component mount
     useEffect(() => {
         fetchEvents();
+        
+        // Set up periodic refresh every 30 seconds
+        const intervalId = setInterval(() => {
+            fetchEvents();
+        }, 30000);
+        
+        // Clean up interval on unmount
+        return () => clearInterval(intervalId);
     }, []);
 
     // Function to get upcoming events (sorted by date)
@@ -95,24 +136,27 @@ const EventProvider = ({ children }) => {
         
         const today = new Date();
         
+        // Only include approved events
+        const approvedEvents = events.filter(event => event.status === 'approved');
+        
         // Convert date strings to Date objects for comparison
-        const upcomingEvents = events
+        const upcomingEvents = approvedEvents
             .filter(event => {
                 try {
                     // Handle different date formats that might come from your database
-                    const dateField = event.date || event.start_time;
-                    if (!dateField) return true; // Include if no date field exists
+                    const dateField = event.date || event.date_from;
+                    if (!dateField) return false; // Skip if no date field exists
                     
                     const eventDate = new Date(dateField);
                     return !isNaN(eventDate) && eventDate >= today;
                 } catch (error) {
                     console.error('Error parsing date:', event);
-                    return true; // Include events with parsing errors
+                    return false; // Skip events with parsing errors
                 }
             })
             .sort((a, b) => {
-                const dateFieldA = a.date || a.start_time;
-                const dateFieldB = b.date || b.start_time;
+                const dateFieldA = a.date || a.date_from;
+                const dateFieldB = b.date || b.date_from;
                 
                 if (!dateFieldA || !dateFieldB) return 0;
                 
@@ -124,6 +168,61 @@ const EventProvider = ({ children }) => {
             });
             
         return upcomingEvents;
+    };
+
+    // Update event status
+    const updateEventStatus = async (eventId, newStatus) => {
+        try {
+            console.log(`Updating event ${eventId} to status ${newStatus}`);
+            
+            // Make sure eventId is a number
+            const id = parseInt(eventId);
+            if (isNaN(id)) {
+                throw new Error(`Invalid event ID: ${eventId}`);
+            }
+            
+            const requestData = {
+                id: id,
+                status: newStatus
+            };
+            
+            console.log('Request data:', requestData);
+            
+            const response = await fetch(`${API_BASE_URL}/update_event_status.php`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestData),
+            });
+            
+            console.log('Response status:', response.status);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            
+            const text = await response.text();
+            console.log('Raw response:', text);
+            
+            try {
+                const data = JSON.parse(text);
+                
+                if (data.success) {
+                    // Refresh events after successful update
+                    fetchEvents();
+                    return { success: true, message: data.message };
+                } else {
+                    throw new Error(data.message || 'Failed to update event status');
+                }
+            } catch (parseError) {
+                console.error('JSON parse error:', parseError);
+                throw new Error('Invalid response format');
+            }
+        } catch (error) {
+            console.error('Error updating event status:', error);
+            return { success: false, message: error.message };
+        }
     };
 
     // Mock data for fallback if API fails
@@ -173,7 +272,7 @@ const EventProvider = ({ children }) => {
                 date: day5.toISOString().split('T')[0],
                 time: '1:00PM - 5:00PM',
                 place: 'Main Hall',
-                status: 'completed',
+                status: 'approved',
                 organizer: 'Student Affairs'
             },
             {
@@ -199,7 +298,8 @@ const EventProvider = ({ children }) => {
             loading, 
             error,
             stats, 
-            getUpcomingEvents, 
+            getUpcomingEvents,
+            updateEventStatus,
             refreshData
         }}>
             {children}

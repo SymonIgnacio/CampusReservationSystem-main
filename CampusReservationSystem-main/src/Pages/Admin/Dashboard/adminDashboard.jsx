@@ -4,21 +4,27 @@ import { AuthContext } from '../../../context/AuthContext';
 import './adminDashboard.css';
 
 function AdminDashboard() {
-  const { events, stats, getUpcomingEvents, loading, error, refreshData } = useContext(EventContext);
+  const { events, stats, loading, error, refreshData } = useContext(EventContext);
   const { user } = useContext(AuthContext);
-  const [filter, setFilter] = useState('approved'); // Only show approved events by default
+  const [filter, setFilter] = useState('all'); // Show all events by default
 
   // Refresh data when component mounts
   useEffect(() => {
     refreshData();
   }, []);
 
-  // Get upcoming events based on filter - only approved events for dashboard
+  // Get events based on filter
   const getFilteredEvents = () => {
-    const upcomingEvents = getUpcomingEvents();
+    if (!events || events.length === 0) {
+      return [];
+    }
     
-    // Always filter to show only approved events on the dashboard
-    return upcomingEvents.filter(event => event.status === 'approved');
+    // Filter events based on selected filter
+    if (filter === 'all') {
+      return events;
+    } else {
+      return events.filter(event => event.status === filter);
+    }
   };
 
   const filteredEvents = getFilteredEvents();
@@ -44,6 +50,11 @@ function AdminDashboard() {
     return 'N/A';
   };
 
+  // Handle filter change
+  const handleFilterChange = (newFilter) => {
+    setFilter(newFilter);
+  };
+
   return (
     <div className="dashboard-container">
       {/* Main Content */}
@@ -55,29 +66,59 @@ function AdminDashboard() {
 
         {/* Stats Cards */}
         <div className="stats-cards">
-          <div className="card yellow">
+          <div className="card yellow" onClick={() => handleFilterChange('all')}>
             <h2>{stats.total}</h2>
             <p>RESERVATIONS</p>
           </div>
-          <div className="card blue">
+          <div className="card blue" onClick={() => handleFilterChange('pending')}>
             <h2>{stats.pending}</h2>
             <p>PENDING</p>
           </div>
-          <div className="card red">
+          <div className="card red" onClick={() => handleFilterChange('declined')}>
             <h2>{stats.declined}</h2>
             <p>DECLINED</p>
           </div>
-          <div className="card green">
+          <div className="card green" onClick={() => handleFilterChange('approved')}>
             <h2>{stats.approved}</h2>
             <p>APPROVED</p>
           </div>
         </div>
 
-        {/* Upcoming Events */}
+        {/* All Reservations */}
         <div className="upcoming-events">
           <div className="events-header">
-            <h2>APPROVED RESERVATIONS</h2>
+            <h2>
+              {filter === 'all' ? 'ALL RESERVATIONS' : 
+               filter === 'pending' ? 'PENDING RESERVATIONS' :
+               filter === 'declined' ? 'DECLINED RESERVATIONS' : 'APPROVED RESERVATIONS'}
+            </h2>
             <div className="filter-controls">
+              <div className="filter-buttons">
+                <button 
+                  className={`filter-button ${filter === 'all' ? 'active' : ''}`}
+                  onClick={() => handleFilterChange('all')}
+                >
+                  All
+                </button>
+                <button 
+                  className={`filter-button ${filter === 'pending' ? 'active' : ''}`}
+                  onClick={() => handleFilterChange('pending')}
+                >
+                  Pending
+                </button>
+                <button 
+                  className={`filter-button ${filter === 'approved' ? 'active' : ''}`}
+                  onClick={() => handleFilterChange('approved')}
+                >
+                  Approved
+                </button>
+                <button 
+                  className={`filter-button ${filter === 'declined' ? 'active' : ''}`}
+                  onClick={() => handleFilterChange('declined')}
+                >
+                  Declined
+                </button>
+              </div>
               <button 
                 className="refresh-button" 
                 onClick={refreshData}
@@ -115,18 +156,27 @@ function AdminDashboard() {
                   {filteredEvents.map(event => (
                     <tr key={getFieldValue(event, ['id', 'reservation_id'])} className={`status-${event.status}`}>
                       <td>{getFieldValue(event, ['id', 'reservation_id'])}</td>
-                      <td>{getFieldValue(event, ['name', 'title', 'reservation_name', 'event_name', 'description'])}</td>
-                      <td>{formatDate(getFieldValue(event, ['date', 'reservation_date', 'event_date']))}</td>
-                      <td>{getFieldValue(event, ['time', 'reservation_time', 'event_time'])}</td>
+                      <td>{getFieldValue(event, ['name', 'title', 'activity', 'reservation_name', 'event_name', 'description'])}</td>
+                      <td>{formatDate(getFieldValue(event, ['date', 'date_from', 'reservation_date', 'event_date']))}</td>
+                      <td>{getFieldValue(event, ['time', 'time_start', 'reservation_time', 'event_time'])}</td>
                       <td>{getFieldValue(event, ['place', 'location', 'venue', 'resource_name'])}</td>
                       <td>
                         <span className={`status-badge ${event.status || 'pending'}`}>
                           {(event.status || 'pending').toUpperCase()}
                         </span>
                       </td>
-                      <td>{getFieldValue(event, ['organizer', 'reserved_by', 'user_id'])}</td>
+                      <td>{getFieldValue(event, ['organizer', 'requestor_name', 'reserved_by', 'user_id'])}</td>
                       <td>
-                        <span className="action-taken">Approved</span>
+                        {event.status === 'pending' ? (
+                          <div className="action-buttons">
+                            <button className="approve-btn">Approve</button>
+                            <button className="decline-btn">Decline</button>
+                          </div>
+                        ) : (
+                          <span className={`action-taken ${event.status}`}>
+                            {event.status === 'approved' ? 'Approved' : 'Declined'}
+                          </span>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -134,7 +184,7 @@ function AdminDashboard() {
               </table>
             </div>
           ) : (
-            <p className="no-events">No approved reservations found.</p>
+            <p className="no-events">No {filter !== 'all' ? filter : ''} reservations found.</p>
           )}
         </div>
       </main>

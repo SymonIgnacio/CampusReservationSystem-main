@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { EventContext } from '../../../context/EventContext';
 import './adminRequests.css';
 
@@ -8,9 +8,17 @@ function AdminRequests() {
   const [filteredRequests, setFilteredRequests] = useState([]);
   const [processingId, setProcessingId] = useState(null);
 
+  // Helper function to get ID from request object
+  const getRequestId = (request) => {
+    // Check for various possible ID field names
+    return request.id || request.event_id || request.reservation_id || request.ID || request.Id;
+  };
+
   // Filter for pending requests only
-  React.useEffect(() => {
+  useEffect(() => {
+    console.log("Events from context:", events);
     const pendingRequests = events.filter(event => event.status === 'pending');
+    console.log("Pending requests:", pendingRequests);
     setFilteredRequests(pendingRequests);
   }, [events]);
 
@@ -25,8 +33,8 @@ function AdminRequests() {
     }
     
     const filtered = events.filter(event => {
-      const title = event.name || event.title || event.description || '';
-      const requestedBy = event.organizer || event.requestedBy || '';
+      const title = event.name || event.title || event.activity || event.description || '';
+      const requestedBy = event.organizer || event.requestor_name || event.requestedBy || '';
       const department = event.department || '';
       
       return (event.status === 'pending') && (
@@ -66,30 +74,56 @@ function AdminRequests() {
 
   // Handle approve request
   const handleApprove = async (id) => {
-    setProcessingId(id);
-    const result = await updateEventStatus(id, 'approved');
-    if (result.success) {
-      // The events will be refreshed by the updateEventStatus function
-      // Just update the filtered requests
-      setFilteredRequests(prev => prev.filter(request => request.id !== id));
-    } else {
-      alert(`Failed to approve request: ${result.message}`);
+    if (!id) {
+      alert("Cannot approve request: Missing ID");
+      return;
     }
-    setProcessingId(null);
+    
+    console.log("Approving request with ID:", id);
+    setProcessingId(id);
+    
+    try {
+      const result = await updateEventStatus(id, 'approved');
+      if (result.success) {
+        // The events will be refreshed by the updateEventStatus function
+        // Just update the filtered requests
+        setFilteredRequests(prev => prev.filter(request => getRequestId(request) !== id));
+      } else {
+        alert(`Failed to approve request: ${result.message}`);
+      }
+    } catch (error) {
+      console.error("Error approving request:", error);
+      alert(`Error approving request: ${error.message}`);
+    } finally {
+      setProcessingId(null);
+    }
   };
 
   // Handle decline request
   const handleDecline = async (id) => {
-    setProcessingId(id);
-    const result = await updateEventStatus(id, 'declined');
-    if (result.success) {
-      // The events will be refreshed by the updateEventStatus function
-      // Just update the filtered requests
-      setFilteredRequests(prev => prev.filter(request => request.id !== id));
-    } else {
-      alert(`Failed to decline request: ${result.message}`);
+    if (!id) {
+      alert("Cannot decline request: Missing ID");
+      return;
     }
-    setProcessingId(null);
+    
+    console.log("Declining request with ID:", id);
+    setProcessingId(id);
+    
+    try {
+      const result = await updateEventStatus(id, 'declined');
+      if (result.success) {
+        // The events will be refreshed by the updateEventStatus function
+        // Just update the filtered requests
+        setFilteredRequests(prev => prev.filter(request => getRequestId(request) !== id));
+      } else {
+        alert(`Failed to decline request: ${result.message}`);
+      }
+    } catch (error) {
+      console.error("Error declining request:", error);
+      alert(`Error declining request: ${error.message}`);
+    } finally {
+      setProcessingId(null);
+    }
   };
 
   return (
@@ -152,39 +186,52 @@ function AdminRequests() {
               </tr>
             </thead>
             <tbody>
-              {filteredRequests.map(request => (
-                <tr key={request.id} className="status-pending">
-                  <td>{request.id}</td>
-                  <td>{request.name || request.title || 'Untitled Event'}</td>
-                  <td>{formatDate(request.date || request.formatted_date || request.start_time)}</td>
-                  <td>{request.time || request.formatted_time_range || 'Time TBD'}</td>
-                  <td>{request.place || request.location || 'Location TBD'}</td>
-                  <td>{request.organizer || request.requestedBy || 'Unknown'}</td>
-                  <td>
-                    <span className="status-badge pending">
-                      PENDING
-                    </span>
-                  </td>
-                  <td>
-                    <div className="action-buttons">
-                      <button 
-                        className="approve-btn"
-                        onClick={() => handleApprove(request.id)}
-                        disabled={processingId === request.id}
-                      >
-                        {processingId === request.id ? 'Processing...' : 'Approve'}
-                      </button>
-                      <button 
-                        className="decline-btn"
-                        onClick={() => handleDecline(request.id)}
-                        disabled={processingId === request.id}
-                      >
-                        {processingId === request.id ? 'Processing...' : 'Decline'}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {filteredRequests.map(request => {
+                // Find the ID field, checking different possible names
+                const requestId = getRequestId(request);
+                console.log("Request data:", request);
+                console.log("Using ID:", requestId);
+                
+                return (
+                  <tr key={requestId || `request-${Math.random()}`} className="status-pending">
+                    <td>{requestId}</td>
+                    <td>{request.name || request.title || request.activity || 'Untitled Event'}</td>
+                    <td>{formatDate(request.date || request.date_from || request.formatted_date)}</td>
+                    <td>{request.time || request.formatted_time_range || `${request.time_start} - ${request.time_end}` || 'Time TBD'}</td>
+                    <td>{request.place || request.venue || request.location || 'Location TBD'}</td>
+                    <td>{request.organizer || request.requestor_name || request.requestedBy || 'Unknown'}</td>
+                    <td>
+                      <span className="status-badge pending">
+                        PENDING
+                      </span>
+                    </td>
+                    <td>
+                      <div className="action-buttons">
+                        <button 
+                          className="approve-btn"
+                          onClick={() => {
+                            console.log("Approve button clicked for ID:", requestId);
+                            handleApprove(requestId);
+                          }}
+                          disabled={processingId === requestId}
+                        >
+                          {processingId === requestId ? 'Processing...' : 'Approve'}
+                        </button>
+                        <button 
+                          className="decline-btn"
+                          onClick={() => {
+                            console.log("Decline button clicked for ID:", requestId);
+                            handleDecline(requestId);
+                          }}
+                          disabled={processingId === requestId}
+                        >
+                          {processingId === requestId ? 'Processing...' : 'Decline'}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

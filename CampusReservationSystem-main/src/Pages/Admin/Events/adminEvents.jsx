@@ -1,10 +1,10 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { EventContext } from '../../../context/EventContext';
 import 'boxicons/css/boxicons.min.css';
 import './adminEvents.css';
 
 function AdminEvents({ isCollapsed }) {
-  const { events, loading, error } = useContext(EventContext);
+  const { events, loading, error, refreshData } = useContext(EventContext);
   const [date] = useState(new Date());
   const [month, setMonth] = useState(date.getMonth());
   const [year, setYear] = useState(date.getFullYear());
@@ -14,7 +14,7 @@ function AdminEvents({ isCollapsed }) {
   const [goToMonth, setGoToMonth] = useState('');
   const [goToDay, setGoToDay] = useState('');
   const [goToYear, setGoToYear] = useState('');
-  const [filteredEvents, setFilteredEvents] = useState(events);
+  const [filteredEvents, setFilteredEvents] = useState([]);
 
   const months = [
     "January", "February", "March", "April", "May", "June",
@@ -24,9 +24,18 @@ function AdminEvents({ isCollapsed }) {
   const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const shortDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-  // Update filtered events when events change
-  React.useEffect(() => {
-    setFilteredEvents(events);
+  // Refresh data when component mounts
+  useEffect(() => {
+    refreshData();
+  }, []);
+
+  // Update filtered events when events change - ONLY SHOW APPROVED EVENTS
+  useEffect(() => {
+    if (events && events.length > 0) {
+      // Only show approved events in the calendar
+      const approvedEvents = events.filter(event => event.status === 'approved');
+      setFilteredEvents(approvedEvents);
+    }
   }, [events]);
 
   const renderCalendar = () => {
@@ -116,9 +125,17 @@ function AdminEvents({ isCollapsed }) {
 
   const handleSearch = (e) => {
     e.preventDefault();
+    if (!searchTerm.trim()) {
+      // Reset to only approved events
+      const approvedEvents = events.filter(event => event.status === 'approved');
+      setFilteredEvents(approvedEvents);
+      return;
+    }
+    
+    // Search only within approved events
     const filtered = events.filter(event => {
-      const title = event.name || event.title || '';
-      return title.toLowerCase().includes(searchTerm.toLowerCase());
+      const title = event.name || event.title || event.activity || '';
+      return event.status === 'approved' && title.toLowerCase().includes(searchTerm.toLowerCase());
     });
     setFilteredEvents(filtered);
   };
@@ -169,10 +186,11 @@ function AdminEvents({ isCollapsed }) {
   // Helper function to get event date
   const getEventDate = (event) => {
     try {
-      if (event.date) {
-        return new Date(event.date);
-      }
-      return null;
+      // Try different date fields
+      const dateStr = event.date || event.date_from || '';
+      if (!dateStr) return null;
+      
+      return new Date(dateStr);
     } catch (e) {
       console.error('Error parsing date:', e);
       return null;
@@ -188,18 +206,29 @@ function AdminEvents({ isCollapsed }) {
   });
 
   // Separate upcoming and finished events
-  const upcomingEvents = currentMonthEvents.filter(event => 
-    event.status === 'approved' || event.status === 'pending'
-  );
-  
-  const finishedEvents = currentMonthEvents.filter(event => 
-    event.status === 'completed' || event.status === 'declined'
-  );
+  const upcomingEvents = currentMonthEvents.filter(event => {
+    const eventDate = getEventDate(event);
+    return eventDate && eventDate >= new Date();
+  });
+
+  const finishedEvents = currentMonthEvents.filter(event => {
+    const eventDate = getEventDate(event);
+    return eventDate && eventDate < new Date();
+  });
+
+  // Format date for display
+  const formatEventDate = (event) => {
+    const eventDate = getEventDate(event);
+    if (!eventDate) return 'Date TBD';
+    
+    return `${months[eventDate.getMonth()].slice(0, 3)} ${eventDate.getDate()}`;
+  };
 
   return (
     <div className={`dashboard-container ${isCollapsed ? 'collapsed' : ''}`}>
       <div className="calendar-container">
         <h1 className="page-title">EVENTS CALENDAR</h1>
+        <p className="subtitle">Showing approved events only</p>
         
         <div className="calendar-nav">
           <button onClick={() => handleNavClick("prev")} className="nav-button">
@@ -259,23 +288,15 @@ function AdminEvents({ isCollapsed }) {
               <p className="error-message">{error}</p>
             ) : upcomingEvents.length > 0 ? (
               <ul className="event-list">
-                {upcomingEvents.map(event => {
-                  const eventDate = getEventDate(event);
-                  return (
-                    <li key={event.id} className="event-item upcoming">
-                      <div className="event-header">
-                        <span className="event-date">
-                          {eventDate ? `${months[eventDate.getMonth()].slice(0, 3)} ${eventDate.getDate()}` : 'Date TBD'}
-                        </span>
-                      </div>
-                      <span className="event-title">{event.name || event.title || 'Untitled Event'}</span>
-                      <div className="event-details">
-                        <span className="event-time">{event.time || 'Time TBD'}</span>
-                        <span className="event-location">{event.place || event.location || 'Location TBD'}</span>
-                      </div>
-                    </li>
-                  );
-                })}
+                {upcomingEvents.map(event => (
+                  <li key={event.id || `event-${Math.random()}`} className="event-item upcoming">
+                    <span className="event-date">
+                      {formatEventDate(event)}
+                    </span>
+                    <br />
+                    <span className="event-title">{event.name || event.title || event.activity || 'Untitled Event'}</span>
+                  </li>
+                ))}
               </ul>
             ) : (
               <p className="no-events">No upcoming events this month</p>
@@ -289,23 +310,14 @@ function AdminEvents({ isCollapsed }) {
               <p className="error-message">{error}</p>
             ) : finishedEvents.length > 0 ? (
               <ul className="event-list">
-                {finishedEvents.map(event => {
-                  const eventDate = getEventDate(event);
-                  return (
-                    <li key={event.id} className="event-item finished">
-                      <div className="event-header">
-                        <span className="event-date">
-                          {eventDate ? `${eventDate.getDate()} ${months[eventDate.getMonth()].slice(0, 3)}` : 'Date TBD'}
-                        </span>
-                      </div>
-                      <span className="event-title">{event.name || event.title || 'Untitled Event'}</span>
-                      <div className="event-details">
-                        <span className="event-time">{event.time || 'Time TBD'}</span>
-                        <span className="event-location">{event.place || event.location || 'Location TBD'}</span>
-                      </div>
-                    </li>
-                  );
-                })}
+                {finishedEvents.map(event => (
+                  <li key={event.id || `event-${Math.random()}`} className="event-item finished">
+                    <span className="event-date">
+                      {formatEventDate(event)}
+                    </span>
+                    <span className="event-title">{event.name || event.title || event.activity || 'Untitled Event'}</span>
+                  </li>
+                ))}
               </ul>
             ) : (
               <p className="no-events">No finished events this month</p>

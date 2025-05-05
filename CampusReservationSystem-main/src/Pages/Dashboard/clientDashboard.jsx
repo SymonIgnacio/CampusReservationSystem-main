@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
+import { EventContext } from '../../context/EventContext';
 import 'boxicons/css/boxicons.min.css';
 import './clientDashboard.css';
 
 function ClientDashboard({ isCollapsed }) {
+  const { events, loading, error, getUpcomingEvents } = useContext(EventContext);
   const [date] = useState(new Date());
   const [month, setMonth] = useState(date.getMonth());
   const [year, setYear] = useState(date.getFullYear());
@@ -12,6 +14,7 @@ function ClientDashboard({ isCollapsed }) {
   const [goToMonth, setGoToMonth] = useState('');
   const [goToDay, setGoToDay] = useState('');
   const [goToYear, setGoToYear] = useState('');
+  const [filteredEvents, setFilteredEvents] = useState([]);
 
   const months = [
     "January", "February", "March", "April", "May", "June",
@@ -20,6 +23,17 @@ function ClientDashboard({ isCollapsed }) {
 
   const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const shortDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+  // Process events when they change
+  useEffect(() => {
+    if (events && events.length > 0) {
+      console.log("Events from context:", events);
+      // Only show approved events
+      const approvedEvents = events.filter(event => event.status === 'approved');
+      console.log("Approved events:", approvedEvents);
+      setFilteredEvents(approvedEvents);
+    }
+  }, [events]);
 
   const renderCalendar = () => {
     const firstDay = new Date(year, month, 1).getDay();
@@ -108,9 +122,18 @@ function ClientDashboard({ isCollapsed }) {
 
   const handleSearch = (e) => {
     e.preventDefault();
-    const filtered = events.filter(event => 
-      event.title.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    if (!searchTerm.trim()) {
+      // Reset to only approved events
+      const approvedEvents = events.filter(event => event.status === 'approved');
+      setFilteredEvents(approvedEvents);
+      return;
+    }
+    
+    // Search only within approved events
+    const filtered = events.filter(event => {
+      const title = event.name || event.title || event.activity || '';
+      return event.status === 'approved' && title.toLowerCase().includes(searchTerm.toLowerCase());
+    });
     setFilteredEvents(filtered);
   };
   
@@ -157,22 +180,46 @@ function ClientDashboard({ isCollapsed }) {
     }
   };
 
-  const [events, setEvents] = useState([
-    { id: 1, title: 'Meeting', date: new Date(), type: 'upcoming' },
-    { id: 2, title: 'Project Deadline', date: new Date(2023, 11, 15), type: 'upcoming' },
-    { id: 3, title: 'Team Lunch', date: new Date(2025, 10, 20), type: 'upcoming' },
-    { id: 4, title: 'Conference', date: new Date(2023, 9, 5), type: 'finished' },
-  ]);
-  
-  const [filteredEvents, setFilteredEvents] = useState(events);
-  
-  const currentMonthEvents = filteredEvents.filter(event => 
-    event.date.getMonth() === month && 
-    event.date.getFullYear() === year
-  );
+  // Helper function to parse date strings
+  const parseEventDate = (event) => {
+    try {
+      // Try different date fields
+      const dateStr = event.date || event.date_from || '';
+      if (!dateStr) return null;
+      
+      return new Date(dateStr);
+    } catch (error) {
+      console.error("Error parsing date:", error);
+      return null;
+    }
+  };
 
-  const upcomingEvents = currentMonthEvents.filter(event => event.type === 'upcoming');
-  const finishedEvents = currentMonthEvents.filter(event => event.type === 'finished');
+  // Filter events for current month
+  const currentMonthEvents = filteredEvents.filter(event => {
+    const eventDate = parseEventDate(event);
+    return eventDate && 
+           eventDate.getMonth() === month && 
+           eventDate.getFullYear() === year;
+  });
+
+  // Separate upcoming and finished events
+  const upcomingEvents = currentMonthEvents.filter(event => {
+    const eventDate = parseEventDate(event);
+    return eventDate && eventDate >= new Date();
+  });
+
+  const finishedEvents = currentMonthEvents.filter(event => {
+    const eventDate = parseEventDate(event);
+    return eventDate && eventDate < new Date();
+  });
+
+  // Format date for display
+  const formatEventDate = (event) => {
+    const eventDate = parseEventDate(event);
+    if (!eventDate) return 'Date TBD';
+    
+    return `${months[eventDate.getMonth()].slice(0, 3)} ${eventDate.getDate()}`;
+  };
 
   return (
     <div className={`dashboard-container ${isCollapsed ? 'collapsed' : ''}`}>
@@ -226,17 +273,21 @@ function ClientDashboard({ isCollapsed }) {
           </div>
         </div>
         <div className="events">
-          <h4 className='dashboard-label'>UPCOMING EVENT FOR <h4 className='dashboard-label'>{months[month].toUpperCase()} {year}</h4></h4>
+          <h4 className='dashboard-label'>UPCOMING EVENTS FOR <span className='dashboard-label'>{months[month].toUpperCase()} {year}</span></h4>
           <div className="border">
-            {upcomingEvents.length > 0 ? (
+            {loading ? (
+              <p className="loading">Loading events...</p>
+            ) : error ? (
+              <p className="error">{error}</p>
+            ) : upcomingEvents.length > 0 ? (
               <ul className="event-list">
                 {upcomingEvents.map(event => (
-                  <li key={event.id} className="event-item upcoming">
+                  <li key={event.id || `event-${Math.random()}`} className="event-item upcoming">
                     <span className="event-date">
-                    {months[event.date.getMonth()].slice(0, 3)} {' '} {event.date.getDate()} {' '}
+                      {formatEventDate(event)}
                     </span>
                     <br />
-                    <span className="event-title">{event.title}</span>
+                    <span className="event-title">{event.name || event.title || event.activity || 'Untitled Event'}</span>
                   </li>
                 ))}
               </ul>
@@ -246,14 +297,18 @@ function ClientDashboard({ isCollapsed }) {
           </div>
           <h4 className='dashboard-label'>FINISHED EVENTS</h4>
           <div className="border">
-            {finishedEvents.length > 0 ? (
+            {loading ? (
+              <p className="loading">Loading events...</p>
+            ) : error ? (
+              <p className="error">{error}</p>
+            ) : finishedEvents.length > 0 ? (
               <ul className="event-list">
                 {finishedEvents.map(event => (
-                  <li key={event.id} className="event-item finished">
+                  <li key={event.id || `event-${Math.random()}`} className="event-item finished">
                     <span className="event-date">
-                      {event.date.getDate()} {months[event.date.getMonth()].slice(0, 3)}
+                      {formatEventDate(event)}
                     </span>
-                    <span className="event-title">{event.title}</span>
+                    <span className="event-title">{event.name || event.title || event.activity || 'Untitled Event'}</span>
                   </li>
                 ))}
               </ul>

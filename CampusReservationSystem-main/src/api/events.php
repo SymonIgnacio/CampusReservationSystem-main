@@ -1,20 +1,13 @@
 <?php
-// Enable error reporting for debugging
+// events.php - Simple version that just fetches data from the database
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 // Set headers
-header("Access-Control-Allow-Origin: http://localhost:3000");
-header("Access-Control-Allow-Headers: Content-Type");
-header("Access-Control-Allow-Methods: GET, OPTIONS");
-header("Access-Control-Allow-Credentials: true");
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Headers: *");
+header("Access-Control-Allow-Methods: *");
 header("Content-Type: application/json");
-
-// Handle preflight OPTIONS request
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit();
-}
 
 // Connect to DB
 $host = "localhost";
@@ -32,84 +25,95 @@ if ($conn->connect_error) {
     exit;
 }
 
-// Get all tables in the database to find the events table
-$tables_result = $conn->query("SHOW TABLES");
-$tables = [];
-while ($table = $tables_result->fetch_array()) {
-    $tables[] = $table[0];
+// Check which table exists
+$reservationsTableExists = $conn->query("SHOW TABLES LIKE 'reservations'")->num_rows > 0;
+$eventsTableExists = $conn->query("SHOW TABLES LIKE 'events'")->num_rows > 0;
+
+$tableName = $reservationsTableExists ? 'reservations' : ($eventsTableExists ? 'events' : null);
+
+if (!$tableName) {
+    echo json_encode([
+        "success" => false,
+        "events" => [],
+        "message" => "No events or reservations table found in database"
+    ]);
+    exit;
 }
 
-// Find a table that might contain events
-$events_table = null;
-$possible_tables = ['events', 'reservations', 'bookings', 'event', 'reservation', 'booking'];
-foreach ($possible_tables as $table) {
-    if (in_array($table, $tables)) {
-        $events_table = $table;
+// Check if the table has a status column
+$hasStatusColumn = false;
+$columnsResult = $conn->query("DESCRIBE $tableName");
+while ($column = $columnsResult->fetch_assoc()) {
+    if ($column['Field'] === 'status') {
+        $hasStatusColumn = true;
         break;
     }
 }
 
-// If no events table found, return empty array
-if (!$events_table) {
-    echo json_encode([
-        "success" => true,
-        "events" => [],
-        "message" => "No events table found in database"
-    ]);
-    exit;
+// Add status column if it doesn't exist
+if (!$hasStatusColumn) {
+    $alterSql = "ALTER TABLE $tableName ADD COLUMN status VARCHAR(50) DEFAULT 'approved'";
+    if (!$conn->query($alterSql)) {
+        echo json_encode([
+            "success" => false,
+            "message" => "Failed to add status column: " . $conn->error
+        ]);
+        exit;
+    }
 }
-
-// Get status filter if provided
-$status = isset($_GET['status']) ? $_GET['status'] : '';
 
 // Get all events from the table
-if (!empty($status)) {
-    $sql = "SELECT * FROM $events_table WHERE status = '$status'";
-} else {
-    $sql = "SELECT * FROM $events_table";
-}
-
+$sql = "SELECT * FROM $tableName";
 $result = $conn->query($sql);
 
-// Check for query error
 if (!$result) {
     echo json_encode([
         "success" => false,
-        "message" => "Query error: " . $conn->error
+        "message" => "Query failed: " . $conn->error
     ]);
     exit;
-}
-
-// Get column names
-$columns = [];
-$columns_result = $conn->query("DESCRIBE $events_table");
-while ($column = $columns_result->fetch_assoc()) {
-    $columns[] = $column['Field'];
 }
 
 $events = [];
 while ($row = $result->fetch_assoc()) {
-    // Add date formatting if date columns exist
-    if (in_array('start_time', $columns)) {
-        $start_time = $row['start_time'];
-        if ($start_time) {
-            $row['date'] = date('Y-m-d', strtotime($start_time));
-            $row['time'] = date('h:i A', strtotime($start_time));
-        }
+    // Add some basic formatting
+    if (isset($row['date_from'])) {
+        $row['date'] = $row['date_from'];
     }
     
-    // Add compatibility fields
-    if (in_array('title', $columns) && !in_array('name', $columns)) {
-        $row['name'] = $row['title'];
-    } else if (in_array('name', $columns) && !in_array('title', $columns)) {
-        $row['title'] = $row['name'];
+    if (isset($row['time_start']) && isset($row['time_end'])) {
+        $row['time'] = $row['time_start'] . ' - ' . $row['time_end'];
     }
     
-    // Add place/location compatibility
-    if (in_array('place', $columns) && !in_array('location', $columns)) {
-        $row['location'] = $row['place'];
-    } else if (in_array('location', $columns) && !in_array('place', $columns)) {
-        $row['place'] = $row['location'];
+    if (isset($row['activity'])) {
+        $row['name'] = $row['activity'];
+        $row['title'] = $row['activity'];
+    }
+    
+    if (isset($row['venue'])) {
+        $row['location'] = $row['venue'];
+        $row['place'] = $row['venue'];
+    }
+    
+    if (isset($row['requestor_name'])) {
+        $row['organizer'] = $row['requestor_name'];
+        $row['requestedBy'] = $row['requestor_name'];
+    }
+    
+    // Ensure status field exists
+    if (!isset($row['status'])) {
+        // Default all events to 'approved' if status is not present
+        $row['status'] = 'approved';
+    }
+    
+    // Ensure ID field exists
+    if (!isset($row['id']) && isset($row['reservation_id'])) {
+        $row['id'] = $row['reservation_id'];
+    } else if (!isset($row['id']) && isset($row['event_id'])) {
+        $row['id'] = $row['event_id'];
+    } else if (!isset($row['id'])) {
+        // Generate a unique ID if none exists
+        $row['id'] = uniqid();
     }
     
     $events[] = $row;
@@ -118,12 +122,7 @@ while ($row = $result->fetch_assoc()) {
 // Return results
 echo json_encode([
     "success" => true,
-    "events" => $events,
-    "debug_info" => [
-        "table_used" => $events_table,
-        "available_tables" => $tables,
-        "columns" => $columns
-    ]
+    "events" => $events
 ]);
 
 $conn->close();
