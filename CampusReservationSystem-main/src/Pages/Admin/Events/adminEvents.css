@@ -11,7 +11,7 @@
 }
 
 .btn-goto {
-  padding: 8px 16px;
+  padding: 0;
   background-color: #4285f4;
   color: white;
   border: none;
@@ -21,6 +21,10 @@
   transition: background-color 0.3s;
   height: 40px;
   width: 125px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
 }
 
 .btn-goto:hover {
@@ -28,18 +32,28 @@
 }
 
 .btn-search {
-  padding: 8px 12px;
+  padding: 0;
+  margin: 0;
   background-color: #34a853;
   color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: 0 4px 4px 0;
   cursor: pointer;
   transition: background-color 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  width: 40px;
+  line-height: 1;
 }
 
-.btn-search-container{
+.btn-search-container {
   display: flex;
-  width: 350px
+  width: 350px;
+  height: 40px;
+  align-items: center;
+  margin: 0;
 }
 
 .btn-search:hover {
@@ -47,20 +61,29 @@
 }
 
 .bx-search {
-  font-size: 16px;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
 }
 
 .calendar-container {
   font-family: Arial, sans-serif;
   margin: 0 auto;
-  padding: 20px;
+  padding: 20px 20px 20px 0px; /* Reduced left padding to account for title padding */
   width: 800px;
 }
 
 .calendar-container h1 {
   font-size: 24px;
-  margin-bottom: 10px;
-  margin-top: -20px;
+  margin-bottom: 20px;
+  margin-top: 10px;
+  padding-bottom: 10px;
+  padding-left: 20px;
+  border-bottom: 2px solid #f0f0f0;
+  color: #333;
 }
 
 .calendar-container h2 {
@@ -109,7 +132,8 @@
 .calendar-table td.today {
   background-color: #e6f7ff;
   font-weight: bold;
-  color: #1890ff;
+  color:  #00FF00;
+  
 }
 
 .dashboard-container {
@@ -168,6 +192,8 @@
   flex-direction: row;
   margin-bottom: 20px;
   gap: 10px;
+  align-items: center;
+  height: 40px;
 }
 
 .search-container > div {
@@ -176,12 +202,16 @@
 
 .search-container input[type="text"] {
   flex-grow: 1;
-  padding: 8px 12px;
+  padding: 0 12px;
   border: 1px solid #ddd;
+  border-right: none;
   border-radius: 4px 0 0 4px;
   font-size: 14px;
   outline: none;
   width: 250px;
+  height: 40px;
+  box-sizing: border-box;
+  margin: 0;
 }
 
 .search-container input[type="text"]:focus {
@@ -194,23 +224,7 @@
   border: 0px;
 }
 
-.pending {
-  height: 50px;
-  background-color: #FFA500;
-  border: 0px;
-}
-
-.approved {
-  height: 50px;
-  background-color: #00BFFF;
-  border: 0px;
-}
-
-.declined {
-  height: 50px;
-  background-color: #FF6347;
-  border: 0px;
-}
+/* Removed pending, approved, and declined styles as they're no longer needed */
 
 .sidebar, .dashboard-container {
   transition: all 0.3s ease;
@@ -239,17 +253,7 @@
   border-left-color: #FF0000;
 }
 
-.event-item.pending {
-  border-left-color: #FFA500;
-}
-
-.event-item.approved {
-  border-left-color: #00BFFF;
-}
-
-.event-item.declined {
-  border-left-color: #FF6347;
-}
+/* Removed event-item status styles as they're no longer needed */
 
 .event-header {
   display: flex;
@@ -277,53 +281,9 @@
   font-weight: bold;
 }
 
-.status-badge.pending {
-  background-color: #FFF3E0;
-  color: #E65100;
-}
+/* Removed status badge styles as they're no longer needed */
 
-.status-badge.approved {
-  background-color: #E1F5FE;
-  color: #0277BD;
-}
-
-.status-badge.declined {
-  background-color: #FFEBEE;
-  color: #C62828;
-}
-
-.event-actions {
-  display: flex;
-  gap: 10px;
-  margin-top: 8px;
-}
-
-.approve-btn, .decline-btn {
-  padding: 5px 10px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: bold;
-  font-size: 0.8rem;
-}
-
-.approve-btn {
-  background-color: #66bb6a;
-  color: white;
-}
-
-.approve-btn:hover {
-  background-color: #4caf50;
-}
-
-.decline-btn {
-  background-color: #ef5350;
-  color: white;
-}
-
-.decline-btn:hover {
-  background-color: #e53935;
-}
+/* Removed event actions and buttons styles as they're no longer needed */
 
 @media (max-width: 768px) {
   .dashboard-container {
@@ -421,4 +381,67 @@
 .modal-cancel {
   background-color: #f44336;
   color: white;
+}
+.search-container form {
+  display: flex;
+  align-items: center;
+  margin: 0;
+}
+.search-input {
+  display: flex;
+  align-items: center;
+  line-height: 1;
+}
+.btn-goto span {
+  display: inline-block;
+  line-height: 1;
+}
+.event-details {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 5px;
+  font-size: 0.9em;
+  color: #666;
+}
+
+.event-time, .event-location {
+  display: inline-block;
+}
+
+.event-location {
+  max-width: 50%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.loading-message, .error-message {
+  text-align: center;
+  padding: 15px;
+  color: #666;
+}
+
+.error-message {
+  color: #c62828;
+}
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 15px;
+}
+
+.retry-button {
+  margin-top: 10px;
+  padding: 8px 16px;
+  background-color: #4285f4;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.retry-button:hover {
+  background-color: #3367d6;
 }

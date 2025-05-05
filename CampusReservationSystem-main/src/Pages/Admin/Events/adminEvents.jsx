@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
+import { EventContext } from '../../../context/EventContext';
 import 'boxicons/css/boxicons.min.css';
 import './adminEvents.css';
 
 function AdminEvents({ isCollapsed }) {
+  const { events, loading, error } = useContext(EventContext);
   const [date] = useState(new Date());
   const [month, setMonth] = useState(date.getMonth());
   const [year, setYear] = useState(date.getFullYear());
@@ -12,6 +14,7 @@ function AdminEvents({ isCollapsed }) {
   const [goToMonth, setGoToMonth] = useState('');
   const [goToDay, setGoToDay] = useState('');
   const [goToYear, setGoToYear] = useState('');
+  const [filteredEvents, setFilteredEvents] = useState(events);
 
   const months = [
     "January", "February", "March", "April", "May", "June",
@@ -20,6 +23,11 @@ function AdminEvents({ isCollapsed }) {
 
   const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const shortDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+  // Update filtered events when events change
+  React.useEffect(() => {
+    setFilteredEvents(events);
+  }, [events]);
 
   const renderCalendar = () => {
     const firstDay = new Date(year, month, 1).getDay();
@@ -108,9 +116,10 @@ function AdminEvents({ isCollapsed }) {
 
   const handleSearch = (e) => {
     e.preventDefault();
-    const filtered = events.filter(event => 
-      event.title.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filtered = events.filter(event => {
+      const title = event.name || event.title || '';
+      return title.toLowerCase().includes(searchTerm.toLowerCase());
+    });
     setFilteredEvents(filtered);
   };
   
@@ -156,47 +165,41 @@ function AdminEvents({ isCollapsed }) {
       }
     }
   };
+  
+  // Helper function to get event date
+  const getEventDate = (event) => {
+    try {
+      if (event.date) {
+        return new Date(event.date);
+      }
+      return null;
+    } catch (e) {
+      console.error('Error parsing date:', e);
+      return null;
+    }
+  };
+  
+  // Filter events for current month
+  const currentMonthEvents = filteredEvents.filter(event => {
+    const eventDate = getEventDate(event);
+    return eventDate && 
+           eventDate.getMonth() === month && 
+           eventDate.getFullYear() === year;
+  });
 
-  const [events, setEvents] = useState([
-    { id: 1, title: 'Meeting', date: new Date(), type: 'upcoming', status: 'approved' },
-    { id: 2, title: 'Project Deadline', date: new Date(2023, 11, 15), type: 'upcoming', status: 'pending' },
-    { id: 3, title: 'Team Lunch', date: new Date(2025, 10, 20), type: 'upcoming', status: 'pending' },
-    { id: 4, title: 'Conference', date: new Date(2023, 9, 5), type: 'finished', status: 'approved' },
-  ]);
-  
-  const [filteredEvents, setFilteredEvents] = useState(events);
-  
-  const currentMonthEvents = filteredEvents.filter(event => 
-    event.date.getMonth() === month && 
-    event.date.getFullYear() === year
+  // Separate upcoming and finished events
+  const upcomingEvents = currentMonthEvents.filter(event => 
+    event.status === 'approved' || event.status === 'pending'
   );
-
-  const upcomingEvents = currentMonthEvents.filter(event => event.type === 'upcoming');
-  const finishedEvents = currentMonthEvents.filter(event => event.type === 'finished');
-
-  // Admin-specific functions
-  const handleApprove = (id) => {
-    setEvents(events.map(event => 
-      event.id === id ? { ...event, status: 'approved' } : event
-    ));
-    setFilteredEvents(filteredEvents.map(event => 
-      event.id === id ? { ...event, status: 'approved' } : event
-    ));
-  };
-
-  const handleDecline = (id) => {
-    setEvents(events.map(event => 
-      event.id === id ? { ...event, status: 'declined' } : event
-    ));
-    setFilteredEvents(filteredEvents.map(event => 
-      event.id === id ? { ...event, status: 'declined' } : event
-    ));
-  };
+  
+  const finishedEvents = currentMonthEvents.filter(event => 
+    event.status === 'completed' || event.status === 'declined'
+  );
 
   return (
     <div className={`dashboard-container ${isCollapsed ? 'collapsed' : ''}`}>
       <div className="calendar-container">
-        <h1>EVENTS CALENDAR</h1>
+        <h1 className="page-title">EVENTS CALENDAR</h1>
         
         <div className="calendar-nav">
           <button onClick={() => handleNavClick("prev")} className="nav-button">
@@ -208,13 +211,16 @@ function AdminEvents({ isCollapsed }) {
           </button>
         </div>
         <div className='search-container'>
-          <button className='btn-goto' onClick={() => setShowGoToModal(true)}>GO TO</button>
+          <button className='btn-goto' onClick={() => setShowGoToModal(true)}>
+            <span>GO TO</span>
+          </button>
           <form onSubmit={handleSearch} className="btn-search-container">
             <input 
               type="text" 
               placeholder="Search events..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              className="search-input"
             />
             <button type="submit" className='btn-search'>
               <i className="bx bx-search"></i>
@@ -242,35 +248,34 @@ function AdminEvents({ isCollapsed }) {
           <div className="border">
             <button className="upcoming"> UPCOMING </button>
             <button className="finished"> FINISHED </button>
-            <button className="pending"> PENDING </button>
-            <button className="approved"> APPROVED </button>
-            <button className="declined"> DECLINED </button>
           </div>
         </div>
         <div className="events">
           <h4 className='dashboard-label'>UPCOMING EVENTS FOR <span className='dashboard-label'>{months[month].toUpperCase()} {year}</span></h4>
           <div className="border">
-            {upcomingEvents.length > 0 ? (
+            {loading ? (
+              <p className="loading-message">Loading events...</p>
+            ) : error ? (
+              <p className="error-message">{error}</p>
+            ) : upcomingEvents.length > 0 ? (
               <ul className="event-list">
-                {upcomingEvents.map(event => (
-                  <li key={event.id} className={`event-item ${event.status}`}>
-                    <div className="event-header">
-                      <span className="event-date">
-                        {months[event.date.getMonth()].slice(0, 3)} {' '} {event.date.getDate()} {' '}
-                      </span>
-                      <span className={`status-badge ${event.status}`}>
-                        {event.status.toUpperCase()}
-                      </span>
-                    </div>
-                    <span className="event-title">{event.title}</span>
-                    {event.status === 'pending' && (
-                      <div className="event-actions">
-                        <button onClick={() => handleApprove(event.id)} className="approve-btn">Approve</button>
-                        <button onClick={() => handleDecline(event.id)} className="decline-btn">Decline</button>
+                {upcomingEvents.map(event => {
+                  const eventDate = getEventDate(event);
+                  return (
+                    <li key={event.id} className="event-item upcoming">
+                      <div className="event-header">
+                        <span className="event-date">
+                          {eventDate ? `${months[eventDate.getMonth()].slice(0, 3)} ${eventDate.getDate()}` : 'Date TBD'}
+                        </span>
                       </div>
-                    )}
-                  </li>
-                ))}
+                      <span className="event-title">{event.name || event.title || 'Untitled Event'}</span>
+                      <div className="event-details">
+                        <span className="event-time">{event.time || 'Time TBD'}</span>
+                        <span className="event-location">{event.place || event.location || 'Location TBD'}</span>
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
             ) : (
               <p className="no-events">No upcoming events this month</p>
@@ -278,21 +283,29 @@ function AdminEvents({ isCollapsed }) {
           </div>
           <h4 className='dashboard-label'>FINISHED EVENTS</h4>
           <div className="border">
-            {finishedEvents.length > 0 ? (
+            {loading ? (
+              <p className="loading-message">Loading events...</p>
+            ) : error ? (
+              <p className="error-message">{error}</p>
+            ) : finishedEvents.length > 0 ? (
               <ul className="event-list">
-                {finishedEvents.map(event => (
-                  <li key={event.id} className={`event-item ${event.status}`}>
-                    <div className="event-header">
-                      <span className="event-date">
-                        {event.date.getDate()} {months[event.date.getMonth()].slice(0, 3)}
-                      </span>
-                      <span className={`status-badge ${event.status}`}>
-                        {event.status.toUpperCase()}
-                      </span>
-                    </div>
-                    <span className="event-title">{event.title}</span>
-                  </li>
-                ))}
+                {finishedEvents.map(event => {
+                  const eventDate = getEventDate(event);
+                  return (
+                    <li key={event.id} className="event-item finished">
+                      <div className="event-header">
+                        <span className="event-date">
+                          {eventDate ? `${eventDate.getDate()} ${months[eventDate.getMonth()].slice(0, 3)}` : 'Date TBD'}
+                        </span>
+                      </div>
+                      <span className="event-title">{event.name || event.title || 'Untitled Event'}</span>
+                      <div className="event-details">
+                        <span className="event-time">{event.time || 'Time TBD'}</span>
+                        <span className="event-location">{event.place || event.location || 'Location TBD'}</span>
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
             ) : (
               <p className="no-events">No finished events this month</p>

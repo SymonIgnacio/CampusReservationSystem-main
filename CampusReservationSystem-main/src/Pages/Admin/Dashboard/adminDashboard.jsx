@@ -6,22 +6,19 @@ import './adminDashboard.css';
 function AdminDashboard() {
   const { events, stats, getUpcomingEvents, loading, error, refreshData } = useContext(EventContext);
   const { user } = useContext(AuthContext);
-  const [filter, setFilter] = useState('all'); // Filter for events: 'all', 'pending', 'approved', 'declined'
+  const [filter, setFilter] = useState('approved'); // Only show approved events by default
 
   // Refresh data when component mounts
   useEffect(() => {
     refreshData();
   }, []);
 
-  // Get upcoming events based on filter
+  // Get upcoming events based on filter - only approved events for dashboard
   const getFilteredEvents = () => {
     const upcomingEvents = getUpcomingEvents();
     
-    if (filter === 'all') {
-      return upcomingEvents;
-    }
-    
-    return upcomingEvents.filter(event => event.status === filter);
+    // Always filter to show only approved events on the dashboard
+    return upcomingEvents.filter(event => event.status === 'approved');
   };
 
   const filteredEvents = getFilteredEvents();
@@ -52,7 +49,7 @@ function AdminDashboard() {
       {/* Main Content */}
       <main className="main-content">
         <div className="dashboard-header">
-          <h1>ADMIN DASHBOARD</h1>
+          <h1 className="page-title">ADMIN DASHBOARD</h1>
           {user && <p>Welcome, {getFieldValue(user, ['name', 'firstname', 'username'])}!</p>}
         </div>
 
@@ -79,19 +76,8 @@ function AdminDashboard() {
         {/* Upcoming Events */}
         <div className="upcoming-events">
           <div className="events-header">
-            <h2>UPCOMING RESERVATIONS</h2>
+            <h2>APPROVED RESERVATIONS</h2>
             <div className="filter-controls">
-              <label htmlFor="filter">Filter by status:</label>
-              <select 
-                id="filter" 
-                value={filter} 
-                onChange={(e) => setFilter(e.target.value)}
-              >
-                <option value="all">All Reservations</option>
-                <option value="pending">Pending</option>
-                <option value="approved">Approved</option>
-                <option value="declined">Declined</option>
-              </select>
               <button 
                 className="refresh-button" 
                 onClick={refreshData}
@@ -139,9 +125,8 @@ function AdminDashboard() {
                         </span>
                       </td>
                       <td>{getFieldValue(event, ['organizer', 'reserved_by', 'user_id'])}</td>
-                      <td className="action-buttons">
-                        <button className="approve-btn">Approve</button>
-                        <button className="decline-btn">Decline</button>
+                      <td>
+                        <span className="action-taken">Approved</span>
                       </td>
                     </tr>
                   ))}
@@ -149,7 +134,7 @@ function AdminDashboard() {
               </table>
             </div>
           ) : (
-            <p className="no-events">No upcoming reservations found.</p>
+            <p className="no-events">No approved reservations found.</p>
           )}
         </div>
       </main>

@@ -15,8 +15,8 @@ import Navbar from './Components/Navbar';
 import AdminEvents from './Pages/Admin/Events/adminEvents';
 import AdminCreateEvent from './Pages/Admin/CreateEvent/adminCreateEvent';
 import AdminUsers from './Pages/Admin/Users/adminUsers';
-// For now, we'll use placeholder components for the rest
-const AdminRequests = () => <div>Requests Management Page</div>;
+// Import admin requests page
+import AdminRequests from './Pages/Admin/Requests/adminRequests';
 const AdminSettings = Settings;
 
 // Protected route component

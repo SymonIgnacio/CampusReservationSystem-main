@@ -199,7 +199,7 @@ const AdminUsers = () => {
 
   return (
     <div className="admin-users-container">
-      <h2>USER MANAGEMENT</h2>
+      <h2 className="page-title">USER MANAGEMENT</h2>
       
       <div className="controls">
         <div className="filter-container">

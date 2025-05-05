@@ -1,68 +1,138 @@
 <?php
-header("Access-Control-Allow-Origin: *");
+// Enable error reporting but don't display errors in output
+error_reporting(E_ALL);
+ini_set('display_errors', 0);
+
+// Set headers
+header("Access-Control-Allow-Origin: http://localhost:3000");
 header("Access-Control-Allow-Headers: Content-Type");
+header("Access-Control-Allow-Methods: POST, OPTIONS");
+header("Access-Control-Allow-Credentials: true");
 header("Content-Type: application/json");
 
-// Get the request body
-$rawInput = file_get_contents("php://input");
-$data = json_decode($rawInput, true);
+// Handle preflight OPTIONS request
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit();
+}
 
-// Debug: Check if input is empty
-if (!$data) {
+// Function to return error response
+function returnError($message, $statusCode = 400) {
+    http_response_code($statusCode);
     echo json_encode([
         "success" => false,
-        "message" => "No data received"
+        "message" => $message
     ]);
     exit;
+}
+
+// Only allow POST requests
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    returnError("Method not allowed", 405);
+}
+
+// Get the request body
+$requestBody = file_get_contents("php://input");
+if (empty($requestBody)) {
+    returnError("Empty request body");
+}
+
+try {
+    $data = json_decode($requestBody, true);
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        returnError("Invalid JSON: " . json_last_error_msg());
+    }
+} catch (Exception $e) {
+    returnError("Error parsing request: " . $e->getMessage());
+}
+
+// Check required fields
+$requiredFields = ['name', 'start_time', 'end_time', 'place'];
+foreach ($requiredFields as $field) {
+    if (!isset($data[$field]) || empty($data[$field])) {
+        returnError("Missing required field: $field");
+    }
 }
 
 // Connect to DB
-$host = "localhost";
-$dbname = "campus_db"; 
-$dbuser = "root";
-$dbpass = "";
+try {
+    $host = "localhost";
+    $dbname = "campus_db"; 
+    $dbuser = "root";
+    $dbpass = "";
 
-$conn = new mysqli($host, $dbuser, $dbpass, $dbname);
+    $conn = new mysqli($host, $dbuser, $dbpass, $dbname);
 
-if ($conn->connect_error) {
-    echo json_encode([
-        "success" => false,
-        "message" => "Connection failed: " . $conn->connect_error
-    ]);
-    exit;
+    if ($conn->connect_error) {
+        returnError("Connection failed: " . $conn->connect_error, 500);
+    }
+} catch (Exception $e) {
+    returnError("Database connection error: " . $e->getMessage(), 500);
 }
 
-// Extract data from request
-$reservation_id = $data["referenceNumber"];
-$user_id = $data["userId"]; // This should be passed from the frontend
-$resource_id = $data["venue"];
-$event_name = $data["eventName"];
-$start_time = $data["dateFrom"] . " " . $data["timeStart"] . ":00";
-$end_time = $data["dateTo"] . " " . $data["timeEnd"] . ":00";
-$status = "approved"; // Since this is created by admin, it's auto-approved
-$purpose = $data["purpose"];
-$approved_by = $user_id; // Admin is approving their own event
-
-// Insert into database
-$sql = "INSERT INTO reservations (reservation_id, user_id, resource_id, event_name, start_time, end_time, status, purpose, approved_by) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-
-$stmt = $conn->prepare($sql);
-$stmt->bind_param("siisssssi", $reservation_id, $user_id, $resource_id, $event_name, $start_time, $end_time, $status, $purpose, $approved_by);
-
-if ($stmt->execute()) {
+try {
+    // Check if events table exists
+    $tableCheck = $conn->query("SHOW TABLES LIKE 'events'");
+    if ($tableCheck->num_rows == 0) {
+        // Create events table if it doesn't exist
+        $createTableSQL = "CREATE TABLE events (
+            id INT(11) AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(255) NOT NULL,
+            description TEXT,
+            start_time DATETIME NOT NULL,
+            end_time DATETIME NOT NULL,
+            place VARCHAR(255) NOT NULL,
+            organizer VARCHAR(255),
+            status VARCHAR(50) DEFAULT 'pending',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )";
+        
+        if (!$conn->query($createTableSQL)) {
+            returnError("Failed to create events table: " . $conn->error, 500);
+        }
+    }
+    
+    // Set default status to pending if not provided
+    if (!isset($data['status']) || empty($data['status'])) {
+        $data['status'] = 'pending';
+    }
+    
+    // Prepare insert statement
+    $stmt = $conn->prepare("INSERT INTO events (name, description, start_time, end_time, place, organizer, status) VALUES (?, ?, ?, ?, ?, ?, ?)");
+    if (!$stmt) {
+        returnError("Prepare failed: " . $conn->error, 500);
+    }
+    
+    // Set default values for optional fields
+    $description = isset($data['description']) ? $data['description'] : '';
+    $organizer = isset($data['organizer']) ? $data['organizer'] : '';
+    
+    $stmt->bind_param("sssssss", 
+        $data['name'],
+        $description,
+        $data['start_time'],
+        $data['end_time'],
+        $data['place'],
+        $organizer,
+        $data['status']
+    );
+    
+    if (!$stmt->execute()) {
+        returnError("Error creating event: " . $stmt->error, 500);
+    }
+    
+    $eventId = $stmt->insert_id;
+    
     echo json_encode([
         "success" => true,
         "message" => "Event created successfully",
-        "reservation_id" => $reservation_id
+        "event_id" => $eventId
     ]);
-} else {
-    echo json_encode([
-        "success" => false,
-        "message" => "Error: " . $stmt->error
-    ]);
+    
+    $stmt->close();
+    $conn->close();
+} catch (Exception $e) {
+    returnError("Error processing request: " . $e->getMessage(), 500);
 }
-
-$stmt->close();
-$conn->close();
 ?>
