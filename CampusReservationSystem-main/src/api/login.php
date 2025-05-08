@@ -1,6 +1,6 @@
 <?php
 // Enable CORS
-header("Access-Control-Allow-Origin: http://localhost:3000");
+header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Headers: Content-Type, Authorization");
 header("Access-Control-Allow-Methods: POST, OPTIONS");
 header("Access-Control-Allow-Credentials: true");
@@ -44,11 +44,18 @@ if ($conn->connect_error) {
     exit();
 }
 
+// Check if users table exists
+$tableCheck = $conn->query("SHOW TABLES LIKE 'users'");
+if ($tableCheck->num_rows == 0) {
+    http_response_code(500);
+    echo json_encode(["success" => false, "message" => "Users table does not exist. Please register first."]);
+    exit();
+}
+
 // Log the request for debugging
 error_log("Login attempt for username: " . $data['username']);
 
 // Prepare statement to prevent SQL injection
-// Adjust the table and column names to match your actual database structure
 $stmt = $conn->prepare("SELECT * FROM users WHERE username = ?");
 if (!$stmt) {
     http_response_code(500);
@@ -63,20 +70,19 @@ $result = $stmt->get_result();
 if ($result->num_rows === 1) {
     $user = $result->fetch_assoc();
     
-    // Log the user data for debugging (remove in production)
-    error_log("User found: " . json_encode($user));
-    
     // Check if password matches the hashed password in the database
     if (password_verify($data['password'], $user['password'])) {
         // Remove password from user data before sending to client
         unset($user['password']);
         
-        // Include session configuration
-        require_once 'session_config.php';
-        // Set session variables
-        $_SESSION['user_id'] = $user['user_id']; // Adjust field name if needed
-        $_SESSION['username'] = $user['username'];
-        $_SESSION['role'] = $user['role'];
+        // Set session variables if session_config.php exists
+        if (file_exists('session_config.php')) {
+            require_once 'session_config.php';
+            // Use 'id' as the user_id field (matches the users table we created)
+            $_SESSION['user_id'] = $user['id']; 
+            $_SESSION['username'] = $user['username'];
+            $_SESSION['role'] = $user['role'];
+        }
         
         echo json_encode([
             "success" => true,
@@ -84,12 +90,10 @@ if ($result->num_rows === 1) {
             "user" => $user
         ]);
     } else {
-        error_log("Password mismatch for user: " . $data['username']);
         http_response_code(401);
         echo json_encode(["success" => false, "message" => "Invalid username or password"]);
     }
 } else {
-    error_log("No user found with username: " . $data['username']);
     http_response_code(401);
     echo json_encode(["success" => false, "message" => "Invalid username or password"]);
 }
