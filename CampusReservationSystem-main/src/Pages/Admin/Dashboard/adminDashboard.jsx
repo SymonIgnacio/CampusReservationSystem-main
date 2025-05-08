@@ -1,9 +1,40 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { EventContext } from '../../../context/EventContext';
 import { AuthContext } from '../../../context/AuthContext';
+import 'boxicons/css/boxicons.min.css';
 import './adminDashboard.css';
 
-function AdminDashboard() {
+// Helper function to render icons with fallback
+const Icon = ({ iconClass }) => {
+  const [iconsLoaded, setIconsLoaded] = useState(true);
+  
+  useEffect(() => {
+    // Check if Boxicons is loaded
+    const testIcon = document.createElement('i');
+    testIcon.className = 'bx bx-menu';
+    document.body.appendChild(testIcon);
+    
+    const computedStyle = window.getComputedStyle(testIcon);
+    const isLoaded = computedStyle.fontFamily.includes('boxicons') || 
+                    computedStyle.fontFamily.includes('BoxIcons');
+    
+    document.body.removeChild(testIcon);
+    setIconsLoaded(isLoaded);
+  }, []);
+  
+  if (iconsLoaded) {
+    return <i className={`bx ${iconClass}`}></i>;
+  } else {
+    // Map to Font Awesome icons as fallback
+    const iconMap = {
+      'bx-refresh': 'fa-solid fa-arrows-rotate',
+      'bx-filter': 'fa-solid fa-filter'
+    };
+    return <i className={iconMap[iconClass] || 'fa-solid fa-circle'}></i>;
+  }
+};
+
+function AdminDashboard({ isCollapsed }) {
   const { events, stats, loading, error, refreshData } = useContext(EventContext);
   const { user } = useContext(AuthContext);
   const [filter, setFilter] = useState('all'); // Show all events by default
@@ -56,12 +87,11 @@ function AdminDashboard() {
   };
 
   return (
-    <div className="dashboard-container">
+    <div className={`dashboard-container ${isCollapsed ? 'collapsed' : ''}`}>
       {/* Main Content */}
       <main className="main-content">
         <div className="dashboard-header">
           <h1 className="page-title">ADMIN DASHBOARD</h1>
-          {user && <p>Welcome, {getFieldValue(user, ['name', 'firstname', 'username'])}!</p>}
         </div>
 
         {/* Stats Cards */}
@@ -124,7 +154,11 @@ function AdminDashboard() {
                 onClick={refreshData}
                 disabled={loading}
               >
-                {loading ? 'Loading...' : 'Refresh'}
+                {loading ? 'Loading...' : (
+                  <>
+                    <Icon iconClass="bx-refresh" /> Refresh
+                  </>
+                )}
               </button>
             </div>
           </div>

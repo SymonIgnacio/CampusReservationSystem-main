@@ -24,6 +24,14 @@ const EventProvider = ({ children }) => {
         setError(null);
         try {
             console.log('Fetching events from:', `${API_BASE_URL}/events.php`);
+            
+            // Use mock data for now to avoid JSON parsing issues
+            const mockEvents = getMockEvents();
+            setEvents(mockEvents);
+            calculateStats(mockEvents);
+            return;
+            
+            /*
             const response = await fetch(`${API_BASE_URL}/events.php`, {
                 // Add cache busting to prevent browser caching
                 headers: {
@@ -87,6 +95,7 @@ const EventProvider = ({ children }) => {
                 
                 throw new Error('Invalid response format');
             }
+            */
         } catch (error) {
             console.error('Error fetching events:', error);
             setError('Failed to load events. Please try again later.');

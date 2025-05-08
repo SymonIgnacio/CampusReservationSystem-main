@@ -12,39 +12,37 @@ const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
-    // Check if user is already logged in (via localStorage or session)
+    // Check if user is already logged in (via session)
     useEffect(() => {
         const checkAuthStatus = async () => {
             try {
-                // First check localStorage
-                const savedUser = localStorage.getItem('user');
-                if (savedUser) {
-                    setUser(JSON.parse(savedUser));
-                    return;
+                console.log('Checking auth status...');
+                
+                // First test the API connectivity
+                try {
+                    const testResponse = await fetch(`${API_BASE_URL}/test.php`);
+                    const testData = await testResponse.json();
+                    console.log('API test response:', testData);
+                } catch (testError) {
+                    console.error('API test failed:', testError);
                 }
                 
-                // If not in localStorage, check with the server
-                setLoading(true);
                 const response = await fetch(`${API_BASE_URL}/getUser.php`, {
                     method: 'GET',
-                    headers: {
-                        'Cache-Control': 'no-cache'
-                    },
-                    credentials: 'include' // Include cookies for session
+                    credentials: 'include', // Include cookies for session handling
                 });
+
+                console.log('getUser response status:', response.status);
                 
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.success && data.user) {
-                        setUser(data.user);
-                        // Save to localStorage for future use
-                        localStorage.setItem('user', JSON.stringify(data.user));
-                    }
+                const data = await response.json();
+                console.log('getUser response data:', data);
+                
+                if (data.success && data.user) {
+                    console.log('User already logged in:', data.user);
+                    setUser(data.user);
                 }
             } catch (error) {
                 console.error('Error checking auth status:', error);
-            } finally {
-                setLoading(false);
             }
         };
 
@@ -58,44 +56,38 @@ const AuthProvider = ({ children }) => {
         
         try {
             console.log('Attempting login with:', credentials);
+            console.log('API URL:', `${API_BASE_URL}/login.php`);
             
             const response = await fetch(`${API_BASE_URL}/login.php`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Cache-Control': 'no-cache'
                 },
                 body: JSON.stringify(credentials),
-                credentials: 'include' // Include cookies for session
+                credentials: 'include', // Include cookies for session handling
             });
             
             console.log('Response status:', response.status);
             
-            // Get the response text first for debugging
-            const responseText = await response.text();
-            console.log('Raw response:', responseText);
+            const text = await response.text();
+            console.log('Raw response:', text);
             
-            // Try to parse the response as JSON
-            let data;
             try {
-                data = JSON.parse(responseText);
-            } catch (e) {
-                console.error('Error parsing JSON:', e);
-                throw new Error('Invalid JSON response from server');
-            }
-            
-            console.log('Parsed response:', data);
-            
-            if (data.success) {
-                console.log('Login successful:', data.user);
-                setUser(data.user);
-                // Save user to localStorage for persistence
-                localStorage.setItem('user', JSON.stringify(data.user));
-                return { success: true, user: data.user };
-            } else {
-                console.error('Login failed:', data.message);
-                setError(data.message || 'Login failed');
-                return { success: false, message: data.message || 'Login failed' };
+                const data = JSON.parse(text);
+                
+                if (data.success) {
+                    console.log('Login successful:', data.user);
+                    setUser(data.user);
+                    return { success: true, user: data.user };
+                } else {
+                    console.error('Login failed:', data.message);
+                    setError(data.message || 'Login failed');
+                    return { success: false, message: data.message || 'Login failed' };
+                }
+            } catch (parseError) {
+                console.error('JSON parse error:', parseError);
+                setError('Invalid response from server');
+                return { success: false, message: 'Invalid response from server' };
             }
         } catch (error) {
             console.error('Error during login:', error);
@@ -109,20 +101,18 @@ const AuthProvider = ({ children }) => {
     const logout = async () => {
         setLoading(true);
         try {
-            // Try to call logout endpoint if it exists
+            // Call logout API if available
             try {
                 await fetch(`${API_BASE_URL}/logout.php`, {
                     method: 'POST',
-                    credentials: 'include'
+                    credentials: 'include', // Include cookies for session handling
                 });
-            } catch (e) {
-                console.log('No server-side logout endpoint available');
+            } catch (error) {
+                console.error('Error calling logout API:', error);
             }
             
             // Clear user from state
             setUser(null);
-            // Remove from localStorage
-            localStorage.removeItem('user');
             
             return { success: true };
         } catch (error) {
@@ -133,33 +123,6 @@ const AuthProvider = ({ children }) => {
         }
     };
 
-    // Function to get current user profile
-    const getCurrentUser = async () => {
-        try {
-            const response = await fetch(`${API_BASE_URL}/getUser.php`, {
-                method: 'GET',
-                headers: {
-                    'Cache-Control': 'no-cache'
-                },
-                credentials: 'include'
-            });
-            
-            if (response.ok) {
-                const data = await response.json();
-                if (data.success && data.user) {
-                    // Update user state with latest data
-                    setUser(data.user);
-                    localStorage.setItem('user', JSON.stringify(data.user));
-                    return data.user;
-                }
-            }
-            return null;
-        } catch (error) {
-            console.error('Error getting current user:', error);
-            return null;
-        }
-    };
-
     return (
         <AuthContext.Provider value={{ 
             user, 
@@ -167,7 +130,6 @@ const AuthProvider = ({ children }) => {
             error,
             login, 
             logout,
-            getCurrentUser,
             isAuthenticated: !!user
         }}>
             {children}

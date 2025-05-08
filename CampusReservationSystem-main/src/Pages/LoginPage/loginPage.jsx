@@ -8,7 +8,6 @@ function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
-  const [showDefaultCredentials, setShowDefaultCredentials] = useState(false);
   const navigate = useNavigate();
   const { login, loading, error, user, isAuthenticated } = useContext(AuthContext);
 
@@ -48,11 +47,6 @@ function LoginPage() {
       setLoginError("An unexpected error occurred. Please try again.");
       console.error("Login error:", error);
     }
-  };
-
-  const useDefaultCredentials = () => {
-    setUsername("admin");
-    setPassword("admin123");
   };
 
   return (
@@ -105,26 +99,6 @@ function LoginPage() {
         <p className="register-link">
           Don't have an account? <Link to="/register">Register here</Link>
         </p>
-        
-        <div className="default-credentials">
-          <button 
-            className="default-credentials-toggle" 
-            onClick={() => setShowDefaultCredentials(!showDefaultCredentials)}
-          >
-            {showDefaultCredentials ? "Hide default credentials" : "Show default credentials"}
-          </button>
-          
-          {showDefaultCredentials && (
-            <div className="credentials-info">
-              <p>Default admin account:</p>
-              <p>Username: <strong>admin</strong></p>
-              <p>Password: <strong>admin123</strong></p>
-              <button className="use-credentials-btn" onClick={useDefaultCredentials}>
-                Use these credentials
-              </button>
-            </div>
-          )}
-        </div>
       </div>
     </div>
   );

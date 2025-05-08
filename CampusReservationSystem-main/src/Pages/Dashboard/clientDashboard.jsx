@@ -3,6 +3,37 @@ import { EventContext } from '../../context/EventContext';
 import 'boxicons/css/boxicons.min.css';
 import './clientDashboard.css';
 
+// Helper function to render icons with fallback
+const Icon = ({ iconClass }) => {
+  const [iconsLoaded, setIconsLoaded] = useState(true);
+  
+  useEffect(() => {
+    // Check if Boxicons is loaded
+    const testIcon = document.createElement('i');
+    testIcon.className = 'bx bx-menu';
+    document.body.appendChild(testIcon);
+    
+    const computedStyle = window.getComputedStyle(testIcon);
+    const isLoaded = computedStyle.fontFamily.includes('boxicons') || 
+                    computedStyle.fontFamily.includes('BoxIcons');
+    
+    document.body.removeChild(testIcon);
+    setIconsLoaded(isLoaded);
+  }, []);
+  
+  if (iconsLoaded) {
+    return <i className={`bx ${iconClass}`}></i>;
+  } else {
+    // Map to Font Awesome icons as fallback
+    const iconMap = {
+      'bx-chevron-left': 'fa-solid fa-chevron-left',
+      'bx-chevron-right': 'fa-solid fa-chevron-right',
+      'bx-search': 'fa-solid fa-magnifying-glass'
+    };
+    return <i className={iconMap[iconClass] || 'fa-solid fa-circle'}></i>;
+  }
+};
+
 function ClientDashboard({ isCollapsed }) {
   const { events, loading, error, getUpcomingEvents } = useContext(EventContext);
   const [date] = useState(new Date());

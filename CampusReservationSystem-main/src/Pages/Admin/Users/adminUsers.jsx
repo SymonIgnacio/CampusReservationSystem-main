@@ -274,8 +274,8 @@ const AdminUsers = () => {
             </thead>
             <tbody>
               {users.map(user => (
-                <tr key={user.user_id}>
-                  <td>{user.user_id}</td>
+                <tr key={user.id || user.user_id}>
+                  <td>{user.id || user.user_id}</td>
                   <td>{user.username}</td>
                   <td>{user.firstname}</td>
                   <td>{user.lastname}</td>
@@ -288,7 +288,7 @@ const AdminUsers = () => {
                   <td>
                     <button 
                       className="delete-button"
-                      onClick={() => handleDeleteUser(user.user_id)}
+                      onClick={() => handleDeleteUser(user.id || user.user_id)}
                     >
                       Delete
                     </button>

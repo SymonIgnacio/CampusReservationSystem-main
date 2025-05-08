@@ -1,8 +1,12 @@
 <?php
-header("Access-Control-Allow-Origin: http://localhost:3000");
+// delete_user.php - Delete a user from the database
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
+// Set headers
+header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Headers: Content-Type");
 header("Access-Control-Allow-Methods: POST, OPTIONS");
-header("Access-Control-Allow-Credentials: true");
 header("Content-Type: application/json");
 
 // Handle preflight OPTIONS request
@@ -13,24 +17,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 // Only allow POST requests
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
     echo json_encode([
         "success" => false,
         "message" => "Method not allowed"
     ]);
-    exit;
+    exit();
 }
 
-// Get the request body
+// Get JSON data from request
 $data = json_decode(file_get_contents("php://input"), true);
 
-// Check if userId is provided
-if (!isset($data['userId'])) {
+if (!$data || !isset($data['userId'])) {
     echo json_encode([
         "success" => false,
-        "message" => "User ID is required"
+        "message" => "Missing user ID"
     ]);
-    exit;
+    exit();
 }
 
 $userId = $data['userId'];
@@ -48,39 +50,50 @@ if ($conn->connect_error) {
         "success" => false,
         "message" => "Connection failed: " . $conn->connect_error
     ]);
-    exit;
+    exit();
 }
 
-// Check if the user exists and is not an admin
-$checkStmt = $conn->prepare("SELECT role FROM users WHERE user_id = ?");
+// Check if users table exists
+$tableCheck = $conn->query("SHOW TABLES LIKE 'users'");
+if ($tableCheck->num_rows == 0) {
+    echo json_encode([
+        "success" => false,
+        "message" => "Users table does not exist"
+    ]);
+    exit();
+}
+
+// Check if user exists
+$checkStmt = $conn->prepare("SELECT * FROM users WHERE id = ?");
 $checkStmt->bind_param("i", $userId);
 $checkStmt->execute();
-$checkResult = $checkStmt->get_result();
+$result = $checkStmt->get_result();
 
-if ($checkResult->num_rows === 0) {
+if ($result->num_rows === 0) {
     echo json_encode([
         "success" => false,
         "message" => "User not found"
     ]);
     $checkStmt->close();
     $conn->close();
-    exit;
+    exit();
 }
 
-$user = $checkResult->fetch_assoc();
+// Check if user is an admin
+$user = $result->fetch_assoc();
 if ($user['role'] === 'admin') {
     echo json_encode([
         "success" => false,
-        "message" => "Cannot delete admin users"
+        "message" => "Cannot delete admin user"
     ]);
     $checkStmt->close();
     $conn->close();
-    exit;
+    exit();
 }
 $checkStmt->close();
 
-// Delete the user
-$stmt = $conn->prepare("DELETE FROM users WHERE user_id = ?");
+// Delete user
+$stmt = $conn->prepare("DELETE FROM users WHERE id = ?");
 $stmt->bind_param("i", $userId);
 
 if ($stmt->execute()) {

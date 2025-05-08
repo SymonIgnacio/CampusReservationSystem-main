@@ -1,8 +1,12 @@
 <?php
-header("Access-Control-Allow-Origin: http://localhost:3000");
+// add_user.php - Add a new user to the database
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
+// Set headers
+header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Headers: Content-Type");
 header("Access-Control-Allow-Methods: POST, OPTIONS");
-header("Access-Control-Allow-Credentials: true");
 header("Content-Type: application/json");
 
 // Handle preflight OPTIONS request
@@ -13,16 +17,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 // Only allow POST requests
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
     echo json_encode([
         "success" => false,
         "message" => "Method not allowed"
     ]);
-    exit;
+    exit();
 }
 
-// Get the request body
+// Get JSON data from request
 $data = json_decode(file_get_contents("php://input"), true);
+
+if (!$data) {
+    echo json_encode([
+        "success" => false,
+        "message" => "Invalid JSON data"
+    ]);
+    exit();
+}
+
+// Validate required fields
+$requiredFields = ['firstname', 'lastname', 'username', 'email', 'password', 'role'];
+foreach ($requiredFields as $field) {
+    if (!isset($data[$field]) || empty($data[$field])) {
+        echo json_encode([
+            "success" => false,
+            "message" => "Missing required field: $field"
+        ]);
+        exit();
+    }
+}
 
 // Connect to DB
 $host = "localhost";
@@ -37,75 +60,86 @@ if ($conn->connect_error) {
         "success" => false,
         "message" => "Connection failed: " . $conn->connect_error
     ]);
-    exit;
+    exit();
 }
 
-// Extract data from request
-$firstname = $data["firstname"];
-$middlename = $data["middlename"];
-$lastname = $data["lastname"];
-$department = $data["department"];
-$username = $data["username"];
-$email = $data["email"];
-$password = $data["password"];
-$role = $data["role"];
-
-// Ensure role is either student or faculty
-if ($role !== "student" && $role !== "faculty") {
-    echo json_encode([
-        "success" => false,
-        "message" => "Invalid role. Role must be either 'student' or 'faculty'."
-    ]);
-    $conn->close();
-    exit;
+// Check if users table exists
+$tableCheck = $conn->query("SHOW TABLES LIKE 'users'");
+if ($tableCheck->num_rows == 0) {
+    // Create users table
+    $createTableSQL = "CREATE TABLE users (
+        id INT(11) AUTO_INCREMENT PRIMARY KEY,
+        firstname VARCHAR(255) NOT NULL,
+        middlename VARCHAR(255),
+        lastname VARCHAR(255) NOT NULL,
+        department VARCHAR(255) NOT NULL,
+        email VARCHAR(255) NOT NULL UNIQUE,
+        username VARCHAR(255) NOT NULL UNIQUE,
+        password VARCHAR(255) NOT NULL,
+        role VARCHAR(50) DEFAULT 'student',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )";
+    
+    if (!$conn->query($createTableSQL)) {
+        echo json_encode([
+            "success" => false,
+            "message" => "Failed to create users table: " . $conn->error
+        ]);
+        exit();
+    }
 }
 
-// Check if username already exists
-$checkStmt = $conn->prepare("SELECT user_id FROM users WHERE username = ?");
-$checkStmt->bind_param("s", $username);
+// Check if username or email already exists
+$checkStmt = $conn->prepare("SELECT * FROM users WHERE username = ? OR email = ?");
+$checkStmt->bind_param("ss", $data['username'], $data['email']);
 $checkStmt->execute();
-$checkResult = $checkStmt->get_result();
+$result = $checkStmt->get_result();
 
-if ($checkResult->num_rows > 0) {
-    echo json_encode([
-        "success" => false,
-        "message" => "Username already exists"
-    ]);
+if ($result->num_rows > 0) {
+    $user = $result->fetch_assoc();
+    if ($user['username'] === $data['username']) {
+        echo json_encode([
+            "success" => false,
+            "message" => "Username already exists"
+        ]);
+    } else {
+        echo json_encode([
+            "success" => false,
+            "message" => "Email already exists"
+        ]);
+    }
     $checkStmt->close();
     $conn->close();
-    exit;
+    exit();
 }
 $checkStmt->close();
 
-// Check if email already exists
-$checkEmailStmt = $conn->prepare("SELECT user_id FROM users WHERE email = ?");
-$checkEmailStmt->bind_param("s", $email);
-$checkEmailStmt->execute();
-$checkEmailResult = $checkEmailStmt->get_result();
+// Hash password
+$hashedPassword = password_hash($data['password'], PASSWORD_DEFAULT);
 
-if ($checkEmailResult->num_rows > 0) {
-    echo json_encode([
-        "success" => false,
-        "message" => "Email already exists"
-    ]);
-    $checkEmailStmt->close();
-    $conn->close();
-    exit;
-}
-$checkEmailStmt->close();
+// Set default values for optional fields
+$middlename = isset($data['middlename']) ? $data['middlename'] : '';
+$department = isset($data['department']) ? $data['department'] : '';
 
-// Hash the password
-$hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-
-// Insert the new user
-$stmt = $conn->prepare("INSERT INTO users (firstname, middlename, lastname, department, username, email, password, role) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-$stmt->bind_param("ssssssss", $firstname, $middlename, $lastname, $department, $username, $email, $hashedPassword, $role);
+// Insert new user
+$stmt = $conn->prepare("INSERT INTO users (firstname, middlename, lastname, department, email, username, password, role) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+$stmt->bind_param("ssssssss", 
+    $data['firstname'], 
+    $middlename, 
+    $data['lastname'], 
+    $department, 
+    $data['email'], 
+    $data['username'], 
+    $hashedPassword, 
+    $data['role']
+);
 
 if ($stmt->execute()) {
+    $userId = $stmt->insert_id;
     echo json_encode([
         "success" => true,
         "message" => "User added successfully",
-        "userId" => $conn->insert_id
+        "user_id" => $userId
     ]);
 } else {
     echo json_encode([

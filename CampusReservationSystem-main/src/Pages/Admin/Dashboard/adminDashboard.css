@@ -1,11 +1,29 @@
+/* Import Boxicons directly */
+@import url('https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css');
+
 .dashboard-container {
-  padding: 20px;
+  display: flex;
+  padding: 10px;
+  margin-left: 250px; /* Same as sidebar width */
+  transition: margin-left 0.3s ease;
+  width: calc(100% - 250px);
+}
+
+.dashboard-container.collapsed {
+  margin-left: 80px; /* Collapsed sidebar width */
+  width: calc(100% - 80px);
+}
+
+.main-content {
   width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
 }
 
 .dashboard-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
   margin-bottom: 20px;
 }
@@ -263,6 +281,20 @@ tr.status-declined {
   background-color: rgba(217, 83, 79, 0.05);
 }
 
+/* Fix for Font Awesome icons */
+.fa-solid {
+  font-family: "Font Awesome 6 Free" !important;
+  font-weight: 900;
+}
+
+/* Ensure icons are visible */
+.bx, .fa-solid {
+  display: inline-block;
+  text-rendering: auto;
+  -webkit-font-smoothing: antialiased;
+  font-style: normal;
+}
+
 /* Responsive adjustments */
 @media (max-width: 992px) {
   .stats-cards {
@@ -271,6 +303,17 @@ tr.status-declined {
 }
 
 @media (max-width: 768px) {
+  .dashboard-container {
+    margin-left: 0;
+    width: 100%;
+    padding-top: 60px; /* Space for mobile menu button */
+  }
+
+  .dashboard-container.collapsed {
+    margin-left: 80px;
+    width: calc(100% - 80px);
+  }
+  
   .stats-cards {
     grid-template-columns: 1fr;
   }
