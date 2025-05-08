@@ -1,4 +1,4 @@
-import React, { useState, useContext } from "react";
+import React, { useState, useContext, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { AuthContext } from "../../context/AuthContext";
 import "./loginPage.css";
@@ -8,8 +8,20 @@ function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
+  const [showDefaultCredentials, setShowDefaultCredentials] = useState(false);
   const navigate = useNavigate();
-  const { login, loading, error } = useContext(AuthContext);
+  const { login, loading, error, user, isAuthenticated } = useContext(AuthContext);
+
+  // If user is already logged in, redirect to appropriate dashboard
+  useEffect(() => {
+    if (isAuthenticated) {
+      if (user && user.role === "admin") {
+        navigate("/admin/dashboard");
+      } else {
+        navigate("/dashboard");
+      }
+    }
+  }, [isAuthenticated, user, navigate]);
 
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
@@ -36,6 +48,11 @@ function LoginPage() {
       setLoginError("An unexpected error occurred. Please try again.");
       console.error("Login error:", error);
     }
+  };
+
+  const useDefaultCredentials = () => {
+    setUsername("admin");
+    setPassword("admin123");
   };
 
   return (
@@ -84,9 +101,31 @@ function LoginPage() {
         </button>
       </form>
 
-      <p className="register-link">
-        Don't have an account? <Link to="/register">Register here</Link>
-      </p>
+      <div className="login-options">
+        <p className="register-link">
+          Don't have an account? <Link to="/register">Register here</Link>
+        </p>
+        
+        <div className="default-credentials">
+          <button 
+            className="default-credentials-toggle" 
+            onClick={() => setShowDefaultCredentials(!showDefaultCredentials)}
+          >
+            {showDefaultCredentials ? "Hide default credentials" : "Show default credentials"}
+          </button>
+          
+          {showDefaultCredentials && (
+            <div className="credentials-info">
+              <p>Default admin account:</p>
+              <p>Username: <strong>admin</strong></p>
+              <p>Password: <strong>admin123</strong></p>
+              <button className="use-credentials-btn" onClick={useDefaultCredentials}>
+                Use these credentials
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

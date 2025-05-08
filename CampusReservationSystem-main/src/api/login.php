@@ -1,9 +1,12 @@
 <?php
+// Enable error reporting for debugging
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 // Enable CORS
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Headers: Content-Type, Authorization");
 header("Access-Control-Allow-Methods: POST, OPTIONS");
-header("Access-Control-Allow-Credentials: true");
 header("Content-Type: application/json");
 
 // Handle preflight OPTIONS request
@@ -12,54 +15,104 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
-// Only allow POST requests
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(["success" => false, "message" => "Method not allowed"]);
+// Get the request body
+$rawInput = file_get_contents("php://input");
+$data = json_decode($rawInput, true);
+
+// Debug: Check if input is empty
+if (!$data) {
+    echo json_encode([
+        "success" => false, 
+        "message" => "No JSON received or invalid format", 
+        "debug" => $rawInput
+    ]);
     exit();
 }
 
-// Get the request body
-$data = json_decode(file_get_contents("php://input"), true);
-
 // Check if username and password are provided
 if (!isset($data['username']) || !isset($data['password'])) {
-    http_response_code(400);
-    echo json_encode(["success" => false, "message" => "Username and password are required"]);
+    echo json_encode([
+        "success" => false, 
+        "message" => "Username and password are required"
+    ]);
     exit();
 }
 
 // Database connection
 $host = "localhost";
-$username = "root";
-$password = "";
-$database = "campus_db";
+$dbuser = "root";
+$dbpass = "";
+$dbname = "campus_db";
 
-$conn = new mysqli($host, $username, $password, $database);
+$conn = new mysqli($host, $dbuser, $dbpass, $dbname);
 
 // Check connection
 if ($conn->connect_error) {
-    http_response_code(500);
-    echo json_encode(["success" => false, "message" => "Database connection failed: " . $conn->connect_error]);
+    echo json_encode([
+        "success" => false, 
+        "message" => "Database connection failed: " . $conn->connect_error
+    ]);
     exit();
 }
 
 // Check if users table exists
 $tableCheck = $conn->query("SHOW TABLES LIKE 'users'");
 if ($tableCheck->num_rows == 0) {
-    http_response_code(500);
-    echo json_encode(["success" => false, "message" => "Users table does not exist. Please register first."]);
-    exit();
+    // Create users table
+    $createTableSQL = "CREATE TABLE users (
+        id INT(11) AUTO_INCREMENT PRIMARY KEY,
+        firstname VARCHAR(255) NOT NULL,
+        middlename VARCHAR(255),
+        lastname VARCHAR(255) NOT NULL,
+        department VARCHAR(255) NOT NULL,
+        email VARCHAR(255) NOT NULL UNIQUE,
+        username VARCHAR(255) NOT NULL UNIQUE,
+        password VARCHAR(255) NOT NULL,
+        role VARCHAR(50) DEFAULT 'student',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )";
+    
+    if ($conn->query($createTableSQL)) {
+        // Create a default admin user
+        $adminFirstName = "Admin";
+        $adminMiddleName = "";
+        $adminLastName = "User";
+        $adminDepartment = "Administration";
+        $adminEmail = "admin@example.com";
+        $adminUsername = "admin";
+        $adminPassword = password_hash("admin123", PASSWORD_DEFAULT);
+        $adminRole = "admin";
+        
+        $sql = "INSERT INTO users (firstname, middlename, lastname, department, email, username, password, role)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param("ssssssss", $adminFirstName, $adminMiddleName, $adminLastName, $adminDepartment, $adminEmail, $adminUsername, $adminPassword, $adminRole);
+        
+        if (!$stmt->execute()) {
+            echo json_encode([
+                "success" => false, 
+                "message" => "Error creating admin user: " . $stmt->error
+            ]);
+            exit();
+        }
+        $stmt->close();
+    } else {
+        echo json_encode([
+            "success" => false, 
+            "message" => "Error creating users table: " . $conn->error
+        ]);
+        exit();
+    }
 }
-
-// Log the request for debugging
-error_log("Login attempt for username: " . $data['username']);
 
 // Prepare statement to prevent SQL injection
 $stmt = $conn->prepare("SELECT * FROM users WHERE username = ?");
 if (!$stmt) {
-    http_response_code(500);
-    echo json_encode(["success" => false, "message" => "Prepare statement failed: " . $conn->error]);
+    echo json_encode([
+        "success" => false, 
+        "message" => "Prepare statement failed: " . $conn->error
+    ]);
     exit();
 }
 
@@ -75,27 +128,22 @@ if ($result->num_rows === 1) {
         // Remove password from user data before sending to client
         unset($user['password']);
         
-        // Set session variables if session_config.php exists
-        if (file_exists('session_config.php')) {
-            require_once 'session_config.php';
-            // Use 'id' as the user_id field (matches the users table we created)
-            $_SESSION['user_id'] = $user['id']; 
-            $_SESSION['username'] = $user['username'];
-            $_SESSION['role'] = $user['role'];
-        }
-        
         echo json_encode([
             "success" => true,
             "message" => "Login successful",
             "user" => $user
         ]);
     } else {
-        http_response_code(401);
-        echo json_encode(["success" => false, "message" => "Invalid username or password"]);
+        echo json_encode([
+            "success" => false, 
+            "message" => "Invalid username or password"
+        ]);
     }
 } else {
-    http_response_code(401);
-    echo json_encode(["success" => false, "message" => "Invalid username or password"]);
+    echo json_encode([
+        "success" => false, 
+        "message" => "Invalid username or password"
+    ]);
 }
 
 $stmt->close();

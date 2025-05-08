@@ -6,26 +6,45 @@ export const AuthContext = createContext();
 // Base API URL - adjust this to match your server configuration
 const API_BASE_URL = 'http://localhost/CampusReservationSystem-main/CampusReservationSystem-main/src/api';
 
-// API URL is defined above
-
 // AuthContext Provider Component
 const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
-    // Check if user is already logged in (via session)
+    // Check if user is already logged in (via localStorage or session)
     useEffect(() => {
         const checkAuthStatus = async () => {
             try {
-                // This would typically check a session endpoint
-                // For now, we'll just check localStorage
+                // First check localStorage
                 const savedUser = localStorage.getItem('user');
                 if (savedUser) {
                     setUser(JSON.parse(savedUser));
+                    return;
+                }
+                
+                // If not in localStorage, check with the server
+                setLoading(true);
+                const response = await fetch(`${API_BASE_URL}/getUser.php`, {
+                    method: 'GET',
+                    headers: {
+                        'Cache-Control': 'no-cache'
+                    },
+                    credentials: 'include' // Include cookies for session
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success && data.user) {
+                        setUser(data.user);
+                        // Save to localStorage for future use
+                        localStorage.setItem('user', JSON.stringify(data.user));
+                    }
                 }
             } catch (error) {
                 console.error('Error checking auth status:', error);
+            } finally {
+                setLoading(false);
             }
         };
 
@@ -39,27 +58,33 @@ const AuthProvider = ({ children }) => {
         
         try {
             console.log('Attempting login with:', credentials);
-            console.log('API URL:', `${API_BASE_URL}/login.php`);
             
-            const loginEndpoint = '/login.php';
-            console.log('Using endpoint:', `${API_BASE_URL}${loginEndpoint}`);
-            
-            const response = await fetch(`${API_BASE_URL}${loginEndpoint}`, {
+            const response = await fetch(`${API_BASE_URL}/login.php`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Cache-Control': 'no-cache'
                 },
                 body: JSON.stringify(credentials),
+                credentials: 'include' // Include cookies for session
             });
             
             console.log('Response status:', response.status);
             
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
+            // Get the response text first for debugging
+            const responseText = await response.text();
+            console.log('Raw response:', responseText);
+            
+            // Try to parse the response as JSON
+            let data;
+            try {
+                data = JSON.parse(responseText);
+            } catch (e) {
+                console.error('Error parsing JSON:', e);
+                throw new Error('Invalid JSON response from server');
             }
             
-            const data = await response.json();
-            console.log('Login response:', data);
+            console.log('Parsed response:', data);
             
             if (data.success) {
                 console.log('Login successful:', data.user);
@@ -84,13 +109,20 @@ const AuthProvider = ({ children }) => {
     const logout = async () => {
         setLoading(true);
         try {
+            // Try to call logout endpoint if it exists
+            try {
+                await fetch(`${API_BASE_URL}/logout.php`, {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+            } catch (e) {
+                console.log('No server-side logout endpoint available');
+            }
+            
             // Clear user from state
             setUser(null);
             // Remove from localStorage
             localStorage.removeItem('user');
-            
-            // In a real app, you would also call a logout endpoint
-            // to invalidate the session on the server
             
             return { success: true };
         } catch (error) {
@@ -101,6 +133,33 @@ const AuthProvider = ({ children }) => {
         }
     };
 
+    // Function to get current user profile
+    const getCurrentUser = async () => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/getUser.php`, {
+                method: 'GET',
+                headers: {
+                    'Cache-Control': 'no-cache'
+                },
+                credentials: 'include'
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success && data.user) {
+                    // Update user state with latest data
+                    setUser(data.user);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    return data.user;
+                }
+            }
+            return null;
+        } catch (error) {
+            console.error('Error getting current user:', error);
+            return null;
+        }
+    };
+
     return (
         <AuthContext.Provider value={{ 
             user, 
@@ -108,6 +167,7 @@ const AuthProvider = ({ children }) => {
             error,
             login, 
             logout,
+            getCurrentUser,
             isAuthenticated: !!user
         }}>
             {children}
