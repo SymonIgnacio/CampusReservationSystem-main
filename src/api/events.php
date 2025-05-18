@@ -5,10 +5,9 @@
 error_reporting(0);
 ini_set('display_errors', 0);
 
-// Set headers
 header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Headers: *");
-header("Access-Control-Allow-Methods: *");
+header("Access-Control-Allow-Headers: Content-Type");
+header("Access-Control-Allow-Methods: POST, OPTIONS");
 header("Content-Type: application/json");
 
 // Function to return error response

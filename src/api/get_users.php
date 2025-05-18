@@ -1,8 +1,8 @@
 <?php
 // Include CORS headers
-require_once 'cors_fix.php';
-
-// Enable error reporting for debugging
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Headers: Content-Type");
+header("Access-Control-Allow-Methods: POST, OPTIONS");
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
@@ -11,6 +11,7 @@ $host = "localhost";
 $dbname = "campus_db"; 
 $dbuser = "root";
 $dbpass = "";
+header("Content-Type: application/json");
 
 $conn = new mysqli($host, $dbuser, $dbpass, $dbname);
 

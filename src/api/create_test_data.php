@@ -2,7 +2,10 @@
 // create_test_data.php - Create test data for the events/reservations table
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
-header("Content-Type: text/html");
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Headers: Content-Type");
+header("Access-Control-Allow-Methods: POST, OPTIONS");
+header("Content-Type: application/json");
 
 echo "<h1>Creating Test Data</h1>";
 
